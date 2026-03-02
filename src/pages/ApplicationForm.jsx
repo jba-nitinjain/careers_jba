@@ -1,0 +1,468 @@
+import React, { useState } from 'react';
+import { db, storage, auth, googleProvider } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { signInWithPopup, onAuthStateChanged } from 'firebase/auth';
+import { Building2, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+
+const InputField = ({ label, id, type = 'text', required, pattern, value, onChange, placeholder }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <input
+      type={type}
+      id={id}
+      name={id}
+      required={required}
+      pattern={pattern}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+    />
+  </div>
+);
+
+const SelectField = ({ label, id, required, options, value, onChange }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <select
+      id={id}
+      name={id}
+      required={required}
+      value={value}
+      onChange={onChange}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
+    >
+      <option value="" disabled>Select...</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const TextAreaField = ({ label, id, required, rows = 3, value, onChange, placeholder }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <textarea
+      id={id}
+      name={id}
+      required={required}
+      rows={rows}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+    />
+  </div>
+);
+
+const ApplicationForm = () => {
+  const [formData, setFormData] = useState({
+    full_name: '', email: '', mobile_number: '', address: '',
+    position: '', ca_status: '', other_qualifications: '',
+    current_employer: '', years_experience: '', current_salary: '', expected_salary: '',
+    expected_stipend: '', prior_experience: '',
+    platforms: [], other_platform: '',
+    excel_skill: '', word_skill: '', powerpoint_skill: '',
+    strengths_weaknesses: '', contribution: '',
+    how_heard: '', how_heard_other: '',
+    ref1_name: '', ref1_relationship: '', ref1_contact: '', ref1_email: '',
+    ref2_name: '', ref2_relationship: '', ref2_contact: '', ref2_email: '',
+  });
+
+  const [resumeFile, setResumeFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    if (type === 'checkbox' && name === 'platforms') {
+      if (checked) {
+        setFormData(prev => ({ ...prev, platforms: [...prev.platforms, value] }));
+      } else {
+        setFormData(prev => ({ ...prev, platforms: prev.platforms.filter(p => p !== value) }));
+      }
+    } else if (name === 'full_name') {
+      const properCase = value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+      setFormData(prev => ({ ...prev, [name]: properCase }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files[0]) {
+      setResumeFile(e.target.files[0]);
+    }
+  };
+
+  const performSubmission = async (user) => {
+    try {
+      const finalPlatforms = formData.platforms.map(p => p === 'Other' ? formData.other_platform : p);
+      let finalHowHeard = formData.how_heard === 'Other' ? formData.how_heard_other : formData.how_heard;
+
+      const references = [];
+      if (formData.ref1_name) {
+        references.push({
+          name: formData.ref1_name,
+          relationship: formData.ref1_relationship,
+          contact: formData.ref1_contact,
+          email: formData.ref1_email
+        });
+      }
+      if (formData.ref2_name) {
+        references.push({
+          name: formData.ref2_name,
+          relationship: formData.ref2_relationship,
+          contact: formData.ref2_contact,
+          email: formData.ref2_email
+        });
+      }
+
+      const applicationData = {
+        fullName: formData.full_name,
+        email: formData.email,
+        mobileNumber: formData.mobile_number,
+        address: formData.address,
+        position: formData.position,
+        qualifications: formData.other_qualifications,
+        platforms: finalPlatforms,
+        excelSkill: formData.excel_skill,
+        wordSkill: formData.word_skill,
+        powerpointSkill: formData.powerpoint_skill,
+        strengthsWeaknesses: formData.strengths_weaknesses,
+        contribution: formData.contribution,
+        howHeard: finalHowHeard,
+        references: references,
+        submittedAt: serverTimestamp(),
+        applicantUid: user.uid,
+        applicantEmail: user.email
+      };
+
+      if (formData.position === 'article') {
+        applicationData.caStatus = formData.ca_status;
+        applicationData.expectedStipend = formData.expected_stipend;
+        applicationData.priorExperience = formData.prior_experience;
+      } else {
+        applicationData.currentEmployer = formData.current_employer;
+        applicationData.yearsExperience = parseFloat(formData.years_experience) || 0;
+        applicationData.currentSalary = formData.current_salary;
+        applicationData.expectedSalary = formData.expected_salary;
+      }
+
+      let resumeUrl = '';
+      if (resumeFile) {
+        const storageRef = ref(storage, `resumes/${user.uid}/${resumeFile.name}`);
+        const uploadResult = await uploadBytes(storageRef, resumeFile);
+        resumeUrl = await getDownloadURL(uploadResult.ref);
+      }
+      applicationData.resumeUrl = resumeUrl;
+
+      await addDoc(collection(db, "applications"), applicationData);
+
+      setSubmitStatus({ type: 'success', message: 'Your application has been submitted successfully. We will get back to you shortly.' });
+
+      // Reset form
+      setFormData({
+        full_name: '', email: '', mobile_number: '', address: '',
+        position: '', ca_status: '', other_qualifications: '',
+        current_employer: '', years_experience: '', current_salary: '', expected_salary: '',
+        expected_stipend: '', prior_experience: '',
+        platforms: [], other_platform: '',
+        excel_skill: '', word_skill: '', powerpoint_skill: '',
+        strengths_weaknesses: '', contribution: '',
+        how_heard: '', how_heard_other: '',
+        ref1_name: '', ref1_relationship: '', ref1_contact: '', ref1_email: '',
+        ref2_name: '', ref2_relationship: '', ref2_contact: '', ref2_email: '',
+      });
+      setResumeFile(null);
+      // reset file input visually
+      document.getElementById('resume').value = '';
+
+    } catch (error) {
+      console.error("Submission error:", error);
+      setSubmitStatus({ type: 'error', message: `Error submitting application: ${error.message}` });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (formData.platforms.length === 0) {
+      alert("Please select at least one accounting platform.");
+      return;
+    }
+    if (!resumeFile) {
+      alert("Please upload your resume.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus({ type: '', message: '' });
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      unsubscribe(); // Run once
+      if (user) {
+        await performSubmission(user);
+      } else {
+        try {
+          const result = await signInWithPopup(auth, googleProvider);
+          await performSubmission(result.user);
+        } catch (error) {
+          console.error("Sign-in error:", error);
+          setSubmitStatus({ type: 'error', message: `Authentication Error: ${error.message}` });
+          setIsSubmitting(false);
+        }
+      }
+    });
+  };
+
+  const platformsList = ["Tally", "QuickBooks", "Zoho Books", "SAP", "Busy", "Other"];
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-3xl mx-auto">
+
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center p-3 bg-indigo-600 rounded-full mb-4 shadow-lg">
+            <Building2 className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+            Join Our Team at Jain Bafna & Associates
+          </h1>
+          <p className="mt-4 text-lg text-gray-500">
+            We are looking for talented individuals to grow with us. Please fill out the form below to apply.
+          </p>
+        </div>
+
+        {submitStatus.message && (
+          <div className={`mb-6 p-4 rounded-md flex items-start ${submitStatus.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+            {submitStatus.type === 'success' ? <CheckCircle2 className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" /> : <XCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />}
+            <p className="text-sm font-medium">{submitStatus.message}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* Section 1: Personal Info */}
+          <div className="bg-white px-6 py-8 shadow sm:rounded-lg">
+            <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">1. Personal Information</h2>
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+              <InputField label="Full Name" id="full_name" required value={formData.full_name} onChange={handleChange} />
+              <InputField label="Email Address" id="email" type="email" required value={formData.email} onChange={handleChange} />
+              <InputField label="Mobile Number" id="mobile_number" type="tel" required pattern="[6-9][0-9]{9}" placeholder="10-digit number" value={formData.mobile_number} onChange={handleChange} />
+              <div className="sm:col-span-2">
+                <TextAreaField label="Current Address" id="address" required rows={2} value={formData.address} onChange={handleChange} />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Position & Education */}
+          <div className="bg-white px-6 py-8 shadow sm:rounded-lg">
+            <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">2. Position & Education</h2>
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+              <SelectField
+                label="Position Applied For"
+                id="position"
+                required
+                value={formData.position}
+                onChange={handleChange}
+                options={[
+                  { value: 'article', label: 'Article Assistant' },
+                  { value: 'paid_assistant', label: 'Paid Assistant / Audit Assistant' }
+                ]}
+              />
+
+              {formData.position === 'article' && (
+                <SelectField
+                  label="CA IPCC / Inter Status"
+                  id="ca_status"
+                  required
+                  value={formData.ca_status}
+                  onChange={handleChange}
+                  options={[
+                    { value: 'Both Groups Cleared', label: 'Both Groups Cleared' },
+                    { value: 'Group 1 Cleared', label: 'Group 1 Cleared' },
+                    { value: 'Group 2 Cleared', label: 'Group 2 Cleared' },
+                    { value: 'Pursuing', label: 'Pursuing' }
+                  ]}
+                />
+              )}
+
+              <div className="sm:col-span-2">
+                <TextAreaField label="Qualifications" id="other_qualifications" required rows={2} value={formData.other_qualifications} onChange={handleChange} />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Conditional Experience */}
+          {formData.position === 'paid_assistant' && (
+            <div className="bg-white px-6 py-8 shadow sm:rounded-lg transition-all duration-300">
+              <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">3. Professional Experience</h2>
+              <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                <InputField label="Current / Last Employer" id="current_employer" required value={formData.current_employer} onChange={handleChange} />
+                <InputField label="Total Years of Experience" id="years_experience" type="number" required value={formData.years_experience} onChange={handleChange} />
+                <InputField label="Current CTC (Per Annum)" id="current_salary" required value={formData.current_salary} onChange={handleChange} />
+                <InputField label="Expected CTC (Per Annum)" id="expected_salary" required value={formData.expected_salary} onChange={handleChange} />
+              </div>
+            </div>
+          )}
+
+          {formData.position === 'article' && (
+            <div className="bg-white px-6 py-8 shadow sm:rounded-lg transition-all duration-300">
+              <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">3. Articleship Details</h2>
+              <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                <InputField label="Expected Stipend (Per Month)" id="expected_stipend" required value={formData.expected_stipend} onChange={handleChange} />
+                <div className="sm:col-span-2">
+                  <TextAreaField label="Any prior internship experience? (If none, write 'N/A')" id="prior_experience" required rows={3} value={formData.prior_experience} onChange={handleChange} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Skills & Motivation */}
+          <div className="bg-white px-6 py-8 shadow sm:rounded-lg">
+            <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">4. Core Skills & Motivation</h2>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Proficient accounting platforms? <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {platformsList.map(platform => (
+                  <label key={platform} className="inline-flex items-center">
+                    <input type="checkbox" name="platforms" value={platform} checked={formData.platforms.includes(platform)} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
+                    <span className="ml-2 text-sm text-gray-700">{platform}</span>
+                  </label>
+                ))}
+              </div>
+              {formData.platforms.includes('Other') && (
+                <div className="mt-3">
+                  <InputField label="Please specify:" id="other_platform" required value={formData.other_platform} onChange={handleChange} />
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">MS Office Proficiency <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {['excel_skill', 'word_skill', 'powerpoint_skill'].map((skillType, idx) => {
+                  const labels = ['MS Excel', 'MS Word', 'MS PowerPoint'];
+                  return (
+                    <div key={skillType}>
+                      <span className="block text-sm font-medium text-gray-600 mb-2">{labels[idx]}</span>
+                      <div className="space-y-2">
+                        {['Beginner', 'Intermediate', 'Advanced'].map(level => (
+                          <label key={level} className="flex items-center">
+                            <input type="radio" name={skillType} value={level} required checked={formData[skillType] === level} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
+                            <span className="ml-2 text-sm text-gray-700">{level}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <TextAreaField label="Strengths & Weaknesses" id="strengths_weaknesses" required rows={4} value={formData.strengths_weaknesses} onChange={handleChange} />
+              <TextAreaField label="How will you contribute to the organisation?" id="contribution" required rows={4} value={formData.contribution} onChange={handleChange} />
+
+              <div>
+                <SelectField
+                  label="Where did you get to know about us from?"
+                  id="how_heard"
+                  value={formData.how_heard}
+                  onChange={handleChange}
+                  options={[
+                    { value: 'LinkedIn', label: 'LinkedIn' },
+                    { value: 'Firm Website', label: 'Firm Website' },
+                    { value: 'Social Media', label: 'Social Media' },
+                    { value: 'Friends', label: 'Friends' },
+                    { value: 'Family', label: 'Family' },
+                    { value: 'Other', label: 'Other' }
+                  ]}
+                />
+                {formData.how_heard === 'Other' && (
+                  <div className="mt-3">
+                    <InputField label="Please specify:" id="how_heard_other" required value={formData.how_heard_other} onChange={handleChange} />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Resume <span className="text-red-500">*</span></label>
+                <input type="file" id="resume" accept=".pdf,.doc,.docx" required onChange={handleFileChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-300 rounded-md shadow-sm" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: References */}
+          <div className="bg-white shadow sm:rounded-lg overflow-hidden">
+            <details className="group">
+              <summary className="flex justify-between items-center font-semibold cursor-pointer list-none px-6 py-5 hover:bg-gray-50 text-gray-900 text-xl">
+                <span>5. References (Optional)</span>
+                <span className="transition group-open:rotate-180">
+                  <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                </span>
+              </summary>
+              <div className="text-neutral-600 mt-3 group-open:animate-fadeIn px-6 pb-8">
+                <p className="text-sm text-gray-500 mb-4">Please provide up to two professional or academic references.</p>
+
+                <div className="mb-6">
+                  <h6 className="text-md font-medium text-gray-800 mb-3 border-b pb-1">Reference 1</h6>
+                  <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-2">
+                    <InputField label="Name" id="ref1_name" value={formData.ref1_name} onChange={handleChange} />
+                    <InputField label="Relationship" id="ref1_relationship" value={formData.ref1_relationship} onChange={handleChange} />
+                    <InputField label="Contact Number" id="ref1_contact" type="tel" pattern="[6-9][0-9]{9}" value={formData.ref1_contact} onChange={handleChange} />
+                    <InputField label="Email" id="ref1_email" type="email" value={formData.ref1_email} onChange={handleChange} />
+                  </div>
+                </div>
+
+                <div>
+                  <h6 className="text-md font-medium text-gray-800 mb-3 border-b pb-1">Reference 2</h6>
+                  <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-2">
+                    <InputField label="Name" id="ref2_name" value={formData.ref2_name} onChange={handleChange} />
+                    <InputField label="Relationship" id="ref2_relationship" value={formData.ref2_relationship} onChange={handleChange} />
+                    <InputField label="Contact Number" id="ref2_contact" type="tel" pattern="[6-9][0-9]{9}" value={formData.ref2_contact} onChange={handleChange} />
+                    <InputField label="Email" id="ref2_email" type="email" value={formData.ref2_email} onChange={handleChange} />
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex justify-center items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                  Processing...
+                </>
+              ) : 'Submit Application'}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default ApplicationForm;
