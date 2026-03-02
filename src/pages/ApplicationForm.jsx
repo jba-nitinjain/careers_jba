@@ -47,7 +47,7 @@ const SelectField = ({ label, id, required, options, value, onChange }) => (
   </div>
 );
 
-const TextAreaField = ({ label, id, required, rows = 3, value, onChange, placeholder }) => (
+const TextAreaField = ({ label, id, required, rows = 3, value, onChange, placeholder, disabled }) => (
   <div>
     <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
       {label} {required && <span className="text-red-500">*</span>}
@@ -60,14 +60,15 @@ const TextAreaField = ({ label, id, required, rows = 3, value, onChange, placeho
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+      disabled={disabled}
+      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
     />
   </div>
 );
 
 const ApplicationForm = () => {
   const [formData, setFormData] = useState({
-    full_name: '', email: '', mobile_number: '', address: '',
+    full_name: '', email: '', mobile_number: '', address: '', hometown_address: '', same_address: false,
     dob: '', current_location: '', linkedin_url: '', willing_to_travel: '',
     position: '', ca_status: '', ca_attempts: '', itt_oc_status: '', availability_to_join: '', degree_status: '',
     highest_qualification: '', other_qualifications: '', notice_period: '', domain_expertise: [],
@@ -95,6 +96,18 @@ const ApplicationForm = () => {
       } else {
         setFormData(prev => ({ ...prev, platforms: prev.platforms.filter(p => p !== value) }));
       }
+    } else if (type === 'checkbox' && name === 'same_address') {
+      setFormData(prev => ({
+        ...prev,
+        same_address: checked,
+        hometown_address: checked ? prev.address : ''
+      }));
+    } else if (name === 'address') {
+      setFormData(prev => ({
+        ...prev,
+        address: value,
+        hometown_address: prev.same_address ? value : prev.hometown_address
+      }));
     } else if (type === 'checkbox' && name === 'domain_expertise') {
       if (checked) {
         setFormData(prev => ({ ...prev, domain_expertise: [...prev.domain_expertise, value] }));
@@ -151,6 +164,7 @@ const ApplicationForm = () => {
         email: formData.email,
         mobileNumber: formData.mobile_number,
         address: formData.address,
+        hometownAddress: formData.hometown_address,
         dob: formData.dob,
         currentLocation: formData.current_location,
         linkedinUrl: formData.linkedin_url,
@@ -202,7 +216,7 @@ const ApplicationForm = () => {
 
       // Reset form
       setFormData({
-        full_name: '', email: '', mobile_number: '', address: '',
+        full_name: '', email: '', mobile_number: '', address: '', hometown_address: '', same_address: false,
         dob: '', current_location: '', linkedin_url: '', willing_to_travel: '',
         position: '', ca_status: '', ca_attempts: '', itt_oc_status: '', availability_to_join: '', degree_status: '',
         highest_qualification: '', other_qualifications: '', notice_period: '', domain_expertise: [],
@@ -299,6 +313,31 @@ const ApplicationForm = () => {
 
               <div className="sm:col-span-2">
                 <TextAreaField label="Current Address" id="address" required rows={2} value={formData.address} onChange={handleChange} />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="flex items-center text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="same_address"
+                    checked={formData.same_address}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mr-2"
+                  />
+                  Hometown address is the same as current address
+                </label>
+              </div>
+
+              <div className="sm:col-span-2">
+                <TextAreaField
+                  label="Hometown Address"
+                  id="hometown_address"
+                  required={!formData.same_address}
+                  rows={2}
+                  value={formData.hometown_address}
+                  onChange={handleChange}
+                  disabled={formData.same_address}
+                />
               </div>
 
               <InputField label="Current Area/Locality in Chennai (e.g., T. Nagar, Adyar)" id="current_location" required value={formData.current_location} onChange={handleChange} />

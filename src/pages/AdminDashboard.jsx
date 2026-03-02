@@ -268,7 +268,8 @@ const AdminDashboard = () => {
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Mobile</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.mobileNumber}</dd></div>
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Current Area</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.currentLocation || 'N/A'}</dd></div>
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">LinkedIn</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.linkedinUrl ? <a href={selectedApp.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 break-all">{selectedApp.linkedinUrl}</a> : 'N/A'}</dd></div>
-                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Address</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.address}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Current Address</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.address}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Hometown Address</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.hometownAddress || 'N/A'}</dd></div>
                       <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Willing to Travel</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.willingToTravel || 'N/A'}</dd></div>
                     </dl>
                   </div>
