@@ -68,7 +68,9 @@ const TextAreaField = ({ label, id, required, rows = 3, value, onChange, placeho
 const ApplicationForm = () => {
   const [formData, setFormData] = useState({
     full_name: '', email: '', mobile_number: '', address: '',
-    position: '', ca_status: '', other_qualifications: '',
+    dob: '', current_location: '', linkedin_url: '', willing_to_travel: '',
+    position: '', ca_status: '', ca_attempts: '', itt_oc_status: '', availability_to_join: '', degree_status: '',
+    highest_qualification: '', other_qualifications: '', notice_period: '', domain_expertise: [],
     current_employer: '', years_experience: '', current_salary: '', expected_salary: '',
     expected_stipend: '', prior_experience: '',
     platforms: [], other_platform: '',
@@ -80,6 +82,7 @@ const ApplicationForm = () => {
   });
 
   const [resumeFile, setResumeFile] = useState(null);
+  const [fileError, setFileError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
 
@@ -92,6 +95,12 @@ const ApplicationForm = () => {
       } else {
         setFormData(prev => ({ ...prev, platforms: prev.platforms.filter(p => p !== value) }));
       }
+    } else if (type === 'checkbox' && name === 'domain_expertise') {
+      if (checked) {
+        setFormData(prev => ({ ...prev, domain_expertise: [...prev.domain_expertise, value] }));
+      } else {
+        setFormData(prev => ({ ...prev, domain_expertise: prev.domain_expertise.filter(d => d !== value) }));
+      }
     } else if (name === 'full_name') {
       const properCase = value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
       setFormData(prev => ({ ...prev, [name]: properCase }));
@@ -101,8 +110,16 @@ const ApplicationForm = () => {
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files[0]) {
-      setResumeFile(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setFileError('File size must be less than 5MB');
+        setResumeFile(null);
+        e.target.value = ''; // Reset input
+      } else {
+        setFileError('');
+        setResumeFile(file);
+      }
     }
   };
 
@@ -134,6 +151,10 @@ const ApplicationForm = () => {
         email: formData.email,
         mobileNumber: formData.mobile_number,
         address: formData.address,
+        dob: formData.dob,
+        currentLocation: formData.current_location,
+        linkedinUrl: formData.linkedin_url,
+        willingToTravel: formData.willing_to_travel,
         position: formData.position,
         qualifications: formData.other_qualifications,
         platforms: finalPlatforms,
@@ -151,9 +172,16 @@ const ApplicationForm = () => {
 
       if (formData.position === 'article') {
         applicationData.caStatus = formData.ca_status;
+        applicationData.caAttempts = formData.ca_attempts;
+        applicationData.ittOcStatus = formData.itt_oc_status;
+        applicationData.availabilityToJoin = formData.availability_to_join;
+        applicationData.degreeStatus = formData.degree_status;
         applicationData.expectedStipend = formData.expected_stipend;
         applicationData.priorExperience = formData.prior_experience;
       } else {
+        applicationData.highestQualification = formData.highest_qualification;
+        applicationData.domainExpertise = formData.domain_expertise;
+        applicationData.noticePeriod = formData.notice_period;
         applicationData.currentEmployer = formData.current_employer;
         applicationData.yearsExperience = parseFloat(formData.years_experience) || 0;
         applicationData.currentSalary = formData.current_salary;
@@ -175,7 +203,9 @@ const ApplicationForm = () => {
       // Reset form
       setFormData({
         full_name: '', email: '', mobile_number: '', address: '',
-        position: '', ca_status: '', other_qualifications: '',
+        dob: '', current_location: '', linkedin_url: '', willing_to_travel: '',
+        position: '', ca_status: '', ca_attempts: '', itt_oc_status: '', availability_to_join: '', degree_status: '',
+        highest_qualification: '', other_qualifications: '', notice_period: '', domain_expertise: [],
         current_employer: '', years_experience: '', current_salary: '', expected_salary: '',
         expected_stipend: '', prior_experience: '',
         platforms: [], other_platform: '',
@@ -186,6 +216,7 @@ const ApplicationForm = () => {
         ref2_name: '', ref2_relationship: '', ref2_contact: '', ref2_email: '',
       });
       setResumeFile(null);
+      setFileError('');
       // reset file input visually
       document.getElementById('resume').value = '';
 
@@ -262,10 +293,29 @@ const ApplicationForm = () => {
             <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">1. Personal Information</h2>
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
               <InputField label="Full Name" id="full_name" required value={formData.full_name} onChange={handleChange} />
+              <InputField label="Date of Birth" id="dob" type="date" required value={formData.dob} onChange={handleChange} />
               <InputField label="Email Address" id="email" type="email" required value={formData.email} onChange={handleChange} />
               <InputField label="Mobile Number" id="mobile_number" type="tel" required pattern="[6-9][0-9]{9}" placeholder="10-digit number" value={formData.mobile_number} onChange={handleChange} />
+
               <div className="sm:col-span-2">
                 <TextAreaField label="Current Address" id="address" required rows={2} value={formData.address} onChange={handleChange} />
+              </div>
+
+              <InputField label="Current Area/Locality in Chennai (e.g., T. Nagar, Adyar)" id="current_location" required value={formData.current_location} onChange={handleChange} />
+              <InputField label="LinkedIn Profile URL" id="linkedin_url" type="url" value={formData.linkedin_url} onChange={handleChange} />
+
+              <div className="sm:col-span-2">
+                <span className="block text-sm font-medium text-gray-700 mb-2">Willingness to Travel for Outstation Audits <span className="text-red-500">*</span></span>
+                <div className="flex space-x-6">
+                  <label className="flex items-center">
+                    <input type="radio" name="willing_to_travel" value="Yes" required checked={formData.willing_to_travel === 'Yes'} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
+                    <span className="ml-2 text-sm text-gray-700">Yes</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input type="radio" name="willing_to_travel" value="No" required checked={formData.willing_to_travel === 'No'} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
+                    <span className="ml-2 text-sm text-gray-700">No</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -287,23 +337,92 @@ const ApplicationForm = () => {
               />
 
               {formData.position === 'article' && (
+                <>
+                  <SelectField
+                    label="CA IPCC / Inter Status"
+                    id="ca_status"
+                    required
+                    value={formData.ca_status}
+                    onChange={handleChange}
+                    options={[
+                      { value: 'Both Groups Cleared', label: 'Both Groups Cleared' },
+                      { value: 'Group 1 Cleared', label: 'Group 1 Cleared' },
+                      { value: 'Group 2 Cleared', label: 'Group 2 Cleared' },
+                      { value: 'Pursuing', label: 'Pursuing' }
+                    ]}
+                  />
+                  <SelectField
+                    label="Number of Attempts in CA Inter"
+                    id="ca_attempts"
+                    required
+                    value={formData.ca_attempts}
+                    onChange={handleChange}
+                    options={[
+                      { value: '1', label: '1' },
+                      { value: '2', label: '2' },
+                      { value: '3', label: '3' },
+                      { value: '4+', label: '4+' }
+                    ]}
+                  />
+                  <SelectField
+                    label="ITT & Orientation Course (OC) Status"
+                    id="itt_oc_status"
+                    required
+                    value={formData.itt_oc_status}
+                    onChange={handleChange}
+                    options={[
+                      { value: 'Completed', label: 'Completed' },
+                      { value: 'Ongoing', label: 'Ongoing' },
+                      { value: 'Pending', label: 'Pending' }
+                    ]}
+                  />
+                  <SelectField
+                    label="B.Com / Degree Status"
+                    id="degree_status"
+                    required
+                    value={formData.degree_status}
+                    onChange={handleChange}
+                    options={[
+                      { value: 'Pursuing Regular', label: 'Pursuing Regular' },
+                      { value: 'Pursuing Correspondence', label: 'Pursuing Correspondence' },
+                      { value: 'Completed', label: 'Completed' },
+                      { value: 'Not Pursuing', label: 'Not Pursuing' }
+                    ]}
+                  />
+                  <SelectField
+                    label="Availability to Join"
+                    id="availability_to_join"
+                    required
+                    value={formData.availability_to_join}
+                    onChange={handleChange}
+                    options={[
+                      { value: 'Immediate', label: 'Immediate' },
+                      { value: 'Within 15 days', label: 'Within 15 days' },
+                      { value: 'Within 1 month', label: 'Within 1 month' }
+                    ]}
+                  />
+                </>
+              )}
+
+              {formData.position === 'paid_assistant' && (
                 <SelectField
-                  label="CA IPCC / Inter Status"
-                  id="ca_status"
+                  label="Highest Qualification"
+                  id="highest_qualification"
                   required
-                  value={formData.ca_status}
+                  value={formData.highest_qualification}
                   onChange={handleChange}
                   options={[
-                    { value: 'Both Groups Cleared', label: 'Both Groups Cleared' },
-                    { value: 'Group 1 Cleared', label: 'Group 1 Cleared' },
-                    { value: 'Group 2 Cleared', label: 'Group 2 Cleared' },
-                    { value: 'Pursuing', label: 'Pursuing' }
+                    { value: 'CA Qualified', label: 'CA Qualified' },
+                    { value: 'CA Semi-Qualified / Finalist', label: 'CA Semi-Qualified / Finalist' },
+                    { value: 'MBA', label: 'MBA' },
+                    { value: 'M.Com', label: 'M.Com' },
+                    { value: 'B.Com', label: 'B.Com' }
                   ]}
                 />
               )}
 
               <div className="sm:col-span-2">
-                <TextAreaField label="Qualifications" id="other_qualifications" required rows={2} value={formData.other_qualifications} onChange={handleChange} />
+                <TextAreaField label="Additional Qualifications / Certifications" id="other_qualifications" required rows={2} value={formData.other_qualifications} onChange={handleChange} />
               </div>
             </div>
           </div>
@@ -313,8 +432,35 @@ const ApplicationForm = () => {
             <div className="bg-white px-6 py-8 shadow sm:rounded-lg transition-all duration-300">
               <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">3. Professional Experience</h2>
               <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Core Domain Expertise <span className="text-red-500">*</span></label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {['Statutory Audit', 'Internal Audit', 'Direct Tax', 'GST', 'ROC/Secretarial', 'Accounting'].map(domain => (
+                      <label key={domain} className="inline-flex items-center">
+                        <input type="checkbox" name="domain_expertise" value={domain} checked={formData.domain_expertise.includes(domain)} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
+                        <span className="ml-2 text-sm text-gray-700">{domain}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <InputField label="Current / Last Employer" id="current_employer" required value={formData.current_employer} onChange={handleChange} />
                 <InputField label="Total Years of Experience" id="years_experience" type="number" required value={formData.years_experience} onChange={handleChange} />
+
+                <SelectField
+                  label="Notice Period"
+                  id="notice_period"
+                  required
+                  value={formData.notice_period}
+                  onChange={handleChange}
+                  options={[
+                    { value: 'Immediate', label: 'Immediate' },
+                    { value: '15 Days', label: '15 Days' },
+                    { value: '30 Days', label: '30 Days' },
+                    { value: '60 Days', label: '60 Days' },
+                    { value: '90 Days', label: '90 Days' }
+                  ]}
+                />
                 <InputField label="Current CTC (Per Annum)" id="current_salary" required value={formData.current_salary} onChange={handleChange} />
                 <InputField label="Expected CTC (Per Annum)" id="expected_salary" required value={formData.expected_salary} onChange={handleChange} />
               </div>
@@ -405,6 +551,7 @@ const ApplicationForm = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Upload Resume <span className="text-red-500">*</span></label>
                 <input type="file" id="resume" accept=".pdf,.doc,.docx" required onChange={handleFileChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-300 rounded-md shadow-sm" />
+                {fileError && <p className="mt-2 text-sm text-red-600">{fileError}</p>}
               </div>
             </div>
           </div>
