@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth, googleProvider } from '../firebase';
+import { db, auth, storage, googleProvider } from '../firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ShieldAlert, LogOut, ArrowUpDown, ExternalLink, X, Loader2 } from 'lucide-react';
 
@@ -48,7 +49,26 @@ const AdminDashboard = () => {
     try {
       const q = query(collection(db, "applications"), orderBy("submittedAt", "desc"));
       const querySnapshot = await getDocs(q);
-      const appsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const appsData = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        let downloadUrl = null;
+
+        // Backwards compatibility: if resumeUrl exists, use it.
+        // Otherwise, fetch it dynamically using the resumePath.
+        if (data.resumeUrl) {
+          downloadUrl = data.resumeUrl;
+        } else if (data.resumePath) {
+          try {
+            downloadUrl = await getDownloadURL(ref(storage, data.resumePath));
+          } catch (e) {
+            console.error("Could not fetch resume URL for", data.resumePath, e);
+          }
+        }
+
+        return { id: doc.id, ...data, dynamicResumeUrl: downloadUrl };
+      }));
+
       setApplications(appsData);
     } catch (err) {
       console.error("Error fetching applications:", err);
@@ -211,8 +231,8 @@ const AdminDashboard = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {app.resumeUrl ? (
-                          <a href={app.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 inline-flex items-center">
+                        {app.dynamicResumeUrl ? (
+                          <a href={app.dynamicResumeUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 inline-flex items-center">
                             View <ExternalLink className="ml-1 w-3 h-3" />
                           </a>
                         ) : (
@@ -263,9 +283,14 @@ const AdminDashboard = () => {
                     <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-wider mb-3">Personal Information</h4>
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Full Name</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.fullName}</dd></div>
+                      <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Date of Birth</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.dob || 'N/A'}</dd></div>
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Email</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.email}</dd></div>
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Mobile</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.mobileNumber}</dd></div>
-                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Address</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.address}</dd></div>
+                      <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Current Area</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.currentLocation || 'N/A'}</dd></div>
+                      <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">LinkedIn</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.linkedinUrl ? <a href={selectedApp.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 break-all">{selectedApp.linkedinUrl}</a> : 'N/A'}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Current Address</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.address}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Hometown Address</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.hometownAddress || 'N/A'}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Willing to Travel</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.willingToTravel || 'N/A'}</dd></div>
                     </dl>
                   </div>
 
@@ -277,15 +302,22 @@ const AdminDashboard = () => {
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
                       {selectedApp.position === 'paid_assistant' ? (
                         <>
+                          <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Highest Qualification</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.highestQualification || 'N/A'}</dd></div>
+                          <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Domain Expertise</dt><dd className="mt-1 text-sm text-gray-900">{(selectedApp.domainExpertise || []).join(', ') || 'N/A'}</dd></div>
                           <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Current/Last Employer</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.currentEmployer || 'N/A'}</dd></div>
                           <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Years of Experience</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.yearsExperience || '0'}</dd></div>
                           <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Current CTC</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.currentSalary || 'N/A'}</dd></div>
                           <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Expected CTC</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.expectedSalary || 'N/A'}</dd></div>
+                          <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Notice Period</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.noticePeriod || 'N/A'}</dd></div>
                         </>
                       ) : (
                         <>
                           <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">CA Inter Status</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.caStatus || 'N/A'}</dd></div>
+                          <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">CA Inter Attempts</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.caAttempts || 'N/A'}</dd></div>
+                          <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">ITT & OC Status</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.ittOcStatus || 'N/A'}</dd></div>
+                          <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">B.Com/Degree Status</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.degreeStatus || 'N/A'}</dd></div>
                           <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Expected Stipend</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.expectedStipend || 'N/A'}</dd></div>
+                          <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">Availability to Join</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.availabilityToJoin || 'N/A'}</dd></div>
                           <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Prior Experience</dt><dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{selectedApp.priorExperience || 'N/A'}</dd></div>
                         </>
                       )}
@@ -296,7 +328,7 @@ const AdminDashboard = () => {
                   <div className="border-t border-gray-200 pt-5">
                     <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-wider mb-3">Skills & Qualifications</h4>
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
-                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Qualifications</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.qualifications}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Additional Qualifications / Certifications</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.qualifications || 'N/A'}</dd></div>
                       <div className="sm:col-span-2"><dt className="text-sm font-medium text-gray-500">Accounting Platforms</dt><dd className="mt-1 text-sm text-gray-900">{(selectedApp.platforms || []).join(', ') || 'None'}</dd></div>
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">MS Excel</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.excelSkill}</dd></div>
                       <div className="sm:col-span-1"><dt className="text-sm font-medium text-gray-500">MS Word</dt><dd className="mt-1 text-sm text-gray-900">{selectedApp.wordSkill}</dd></div>
