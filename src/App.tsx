@@ -1,9 +1,8 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import ApplicationForm from './pages/ApplicationForm';
 import AdminDashboard from './pages/AdminDashboard';
 
-function App() {
+export default function App() {
   return (
     <Router>
       <Routes>
@@ -13,5 +12,3 @@ function App() {
     </Router>
   );
 }
-
-export default App;

@@ -1,28 +1,46 @@
-# React + Vite
+# JBA Careers Portal (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project contains:
+- A public career application form (`/`)
+- An admin dashboard for authorized reviewers (`/admin`)
 
-Currently, two official plugins are available:
+## Admin Dashboard Feature Documentation
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Current core features
+- **Google-authenticated admin access** restricted to a specific admin email.
+- **Application ingestion from Firestore** with newest-first ordering.
+- **Resume link hydration** from `resumeUrl` or fallback via `resumePath` from Firebase Storage.
+- **Robust auth error guidance** for:
+  - unauthorized OAuth domain
+  - popup blocked/closed events
+  - third-party cookie/storage constraints
+- **Application details modal** with contact, skills, experience, and references.
 
-## React Compiler
+### New UI/UX implemented in this update
+- **Modular admin architecture** (hooks + focused components) for maintainability.
+- **Dashboard KPIs**: total applications, article assistants, paid assistants.
+- **Improved controls**:
+  - search by candidate name/email/position
+  - position filter
+  - quick sort toggle
+- **Redesigned table rows** with clearer candidate identity and resume quick actions.
+- **Cleaner top navigation** with refresh + sign-out actions grouped for faster operation.
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+## Firebase OAuth Setup Notes
 
-## Expanding the ESLint configuration
+For deploy previews and custom domains, add each hostname to:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+`Firebase Console → Authentication → Settings → Authorized domains`
 
+If this is missing, popup OAuth will fail on that host and the dashboard now shows explicit remediation text.
 
-## Project Notes for Contributors
+## Architecture Notes
 
-- Firebase Google sign-in on preview domains requires each deployed hostname to be added in Firebase Console: **Authentication → Settings → Authorized domains**.
-- Admin sign-in error handling now includes actionable messages for:
-  - unauthorized OAuth domain (`auth/unauthorized-domain`),
-  - popup blocked/closed flows,
-  - third-party cookie/storage restrictions.
-- Relevant implementation files:
-  - `src/pages/AdminDashboard.jsx`
-  - `src/utils/firebaseAuthErrors.js`
+Admin dashboard logic now lives in:
+- `src/pages/AdminDashboard.tsx`
+- `src/features/admin/hooks/useAdminApplications.ts`
+- `src/features/admin/components/*`
+- `src/features/admin/utils/applicationFormatting.ts`
+- `src/types/admin.ts`
+
+This split keeps files small and focused, making future additions (bulk actions, CSV export, pipeline statuses) straightforward.
