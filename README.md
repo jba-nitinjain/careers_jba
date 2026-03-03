@@ -14,3 +14,15 @@ The React Compiler is currently not compatible with SWC. See [this issue](https:
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+
+## Project Notes for Contributors
+
+- Firebase Google sign-in on preview domains requires each deployed hostname to be added in Firebase Console: **Authentication → Settings → Authorized domains**.
+- Admin sign-in error handling now includes actionable messages for:
+  - unauthorized OAuth domain (`auth/unauthorized-domain`),
+  - popup blocked/closed flows,
+  - third-party cookie/storage restrictions.
+- Relevant implementation files:
+  - `src/pages/AdminDashboard.jsx`
+  - `src/utils/firebaseAuthErrors.js`

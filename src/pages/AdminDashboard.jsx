@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ShieldAlert, LogOut, ArrowUpDown, ExternalLink, X, Loader2 } from 'lucide-react';
+import { getFirebaseAuthErrorMessage } from '../utils/firebaseAuthErrors';
 
 const ADMIN_EMAIL = 'nitinjain@jainbafna.com';
 
@@ -37,7 +38,8 @@ const AdminDashboard = () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      setError(`Sign-in Error: ${err.message}`);
+      const host = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
+      setError(getFirebaseAuthErrorMessage(err, host));
     }
   };
 
