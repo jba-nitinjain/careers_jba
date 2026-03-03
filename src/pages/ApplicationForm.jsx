@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { db, storage, auth, googleProvider } from '../firebase';
+import { db, storage } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 import { Building2, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 const InputField = ({ label, id, type = 'text', required, pattern, value, onChange, placeholder }) => (
@@ -136,7 +135,7 @@ const ApplicationForm = () => {
     }
   };
 
-  const performSubmission = async (user) => {
+  const performSubmission = async () => {
     try {
       const finalPlatforms = formData.platforms.map(p => p === 'Other' ? formData.other_platform : p);
       let finalHowHeard = formData.how_heard === 'Other' ? formData.how_heard_other : formData.how_heard;
@@ -180,8 +179,6 @@ const ApplicationForm = () => {
         howHeard: finalHowHeard,
         references: references,
         submittedAt: serverTimestamp(),
-        applicantUid: user.uid,
-        applicantEmail: user.email
       };
 
       if (formData.position === 'article') {
@@ -204,7 +201,10 @@ const ApplicationForm = () => {
 
       let resumeUrl = '';
       if (resumeFile) {
-        const storageRef = ref(storage, `resumes/${user.uid}/${resumeFile.name}`);
+        // Use a combination of timestamp and original name to avoid collisions
+        const timestamp = Date.now();
+        const safeName = resumeFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const storageRef = ref(storage, `resumes/anonymous/${timestamp}_${safeName}`);
         const uploadResult = await uploadBytes(storageRef, resumeFile);
         resumeUrl = await getDownloadURL(uploadResult.ref);
       }
@@ -257,21 +257,7 @@ const ApplicationForm = () => {
     setIsSubmitting(true);
     setSubmitStatus({ type: '', message: '' });
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      unsubscribe(); // Run once
-      if (user) {
-        await performSubmission(user);
-      } else {
-        try {
-          const result = await signInWithPopup(auth, googleProvider);
-          await performSubmission(result.user);
-        } catch (error) {
-          console.error("Sign-in error:", error);
-          setSubmitStatus({ type: 'error', message: `Authentication Error: ${error.message}` });
-          setIsSubmitting(false);
-        }
-      }
-    });
+    await performSubmission();
   };
 
   const platformsList = ["Tally", "QuickBooks", "Zoho Books", "SAP", "Busy", "Other"];
