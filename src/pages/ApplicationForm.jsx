@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db, storage } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { Building2, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 const InputField = ({ label, id, type = 'text', required, pattern, value, onChange, placeholder }) => (
@@ -199,16 +199,20 @@ const ApplicationForm = () => {
         applicationData.expectedSalary = formData.expected_salary;
       }
 
-      let resumeUrl = '';
+      let resumePath = '';
       if (resumeFile) {
         // Use a combination of timestamp and original name to avoid collisions
         const timestamp = Date.now();
         const safeName = resumeFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const storageRef = ref(storage, `resumes/anonymous/${timestamp}_${safeName}`);
         const uploadResult = await uploadBytes(storageRef, resumeFile);
-        resumeUrl = await getDownloadURL(uploadResult.ref);
+
+        // We do NOT call getDownloadURL() here because the new Storage rules
+        // prevent unauthenticated users from reading files, which getDownloadURL does.
+        // Instead, we store the full path and let the Admin Dashboard fetch the URL.
+        resumePath = uploadResult.ref.fullPath;
       }
-      applicationData.resumeUrl = resumeUrl;
+      applicationData.resumePath = resumePath;
 
       await addDoc(collection(db, "applications"), applicationData);
 

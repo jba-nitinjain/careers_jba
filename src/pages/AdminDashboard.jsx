@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth, googleProvider } from '../firebase';
+import { db, auth, storage, googleProvider } from '../firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ShieldAlert, LogOut, ArrowUpDown, ExternalLink, X, Loader2 } from 'lucide-react';
 
@@ -48,7 +49,26 @@ const AdminDashboard = () => {
     try {
       const q = query(collection(db, "applications"), orderBy("submittedAt", "desc"));
       const querySnapshot = await getDocs(q);
-      const appsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const appsData = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        let downloadUrl = null;
+
+        // Backwards compatibility: if resumeUrl exists, use it.
+        // Otherwise, fetch it dynamically using the resumePath.
+        if (data.resumeUrl) {
+          downloadUrl = data.resumeUrl;
+        } else if (data.resumePath) {
+          try {
+            downloadUrl = await getDownloadURL(ref(storage, data.resumePath));
+          } catch (e) {
+            console.error("Could not fetch resume URL for", data.resumePath, e);
+          }
+        }
+
+        return { id: doc.id, ...data, dynamicResumeUrl: downloadUrl };
+      }));
+
       setApplications(appsData);
     } catch (err) {
       console.error("Error fetching applications:", err);
@@ -211,8 +231,8 @@ const AdminDashboard = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {app.resumeUrl ? (
-                          <a href={app.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 inline-flex items-center">
+                        {app.dynamicResumeUrl ? (
+                          <a href={app.dynamicResumeUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900 inline-flex items-center">
                             View <ExternalLink className="ml-1 w-3 h-3" />
                           </a>
                         ) : (
