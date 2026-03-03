@@ -16,6 +16,8 @@ This project contains:
   - third-party cookie/storage constraints
   - invalid credential/email and lockout states for username/password login
 - **Application details modal** with contact, skills, experience, and references.
+- **Application workflow actions**: mark each application as `new`, `rejected`, `called for interview`, or `selected`.
+- **Safe delete action**: delete application record and remove the corresponding resume file from Firebase Storage (if present).
 
 ### New UI/UX implemented in this update
 - **Modular admin architecture** (hooks + focused components) for maintainability.
@@ -42,6 +44,8 @@ Admin dashboard logic now lives in:
 - `src/features/admin/hooks/useAdminApplications.ts`
 - `src/features/admin/components/*`
 - `src/features/admin/utils/applicationFormatting.ts`
+- `src/features/admin/utils/applicationActions.ts`
+- `src/features/admin/hooks/useApplicationMutations.ts`
 - `src/types/admin.ts`
 
-This split keeps files small and focused, making future additions (bulk actions, CSV export, pipeline statuses) straightforward.
+This split keeps files small and focused, and now includes modular mutation handlers for status and delete operations.

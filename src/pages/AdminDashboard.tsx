@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import type { AdminSortKey, ApplicationRecord } from '../types/admin';
+import type { AdminSortKey, ApplicationRecord, ApplicationStatus } from '../types/admin';
 import { ApplicationDetailsModal } from '../features/admin/components/ApplicationDetailsModal';
 import { ApplicationsTable } from '../features/admin/components/ApplicationsTable';
 import { AdminFilters } from '../features/admin/components/AdminFilters';
@@ -8,6 +8,7 @@ import { AdminSignInCard } from '../features/admin/components/AdminSignInCard';
 import { AdminStats } from '../features/admin/components/AdminStats';
 import { AdminTopBar } from '../features/admin/components/AdminTopBar';
 import { useAdminApplications } from '../features/admin/hooks/useAdminApplications';
+import { useApplicationMutations } from '../features/admin/hooks/useApplicationMutations';
 
 function nextSortDirection(current: 'asc' | 'desc'): 'asc' | 'desc' {
   return current === 'asc' ? 'desc' : 'asc';
@@ -32,6 +33,8 @@ export default function AdminDashboard() {
     refreshApplications,
   } = useAdminApplications();
 
+  const { pendingApplicationId, mutationError, handleStatusChange, handleDeleteApplication } = useApplicationMutations();
+
   const handleSortChange = (key: AdminSortKey) => {
     setSortConfig({
       key,
@@ -43,6 +46,14 @@ export default function AdminDashboard() {
     () => `Showing ${applications.length} application${applications.length === 1 ? '' : 's'}.`,
     [applications.length],
   );
+
+  const onStatusChange = async (application: ApplicationRecord, status: ApplicationStatus) => {
+    await handleStatusChange(application, status, refreshApplications);
+  };
+
+  const onDeleteApplication = async (application: ApplicationRecord) => {
+    await handleDeleteApplication(application, refreshApplications);
+  };
 
   if (loading) {
     return (
@@ -71,6 +82,7 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Application Management</h1>
           <p className="text-sm text-gray-600 mt-1">{headerDescription}</p>
           {error ? <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div> : null}
+          {mutationError ? <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-md text-sm">{mutationError}</div> : null}
         </header>
 
         <AdminStats applications={applications} />
@@ -82,7 +94,13 @@ export default function AdminDashboard() {
           onPositionChange={setPositionFilter}
           onSortChange={handleSortChange}
         />
-        <ApplicationsTable applications={applications} onView={setSelectedApplication} />
+        <ApplicationsTable
+          applications={applications}
+          pendingApplicationId={pendingApplicationId}
+          onView={setSelectedApplication}
+          onStatusChange={onStatusChange}
+          onDelete={onDeleteApplication}
+        />
       </main>
 
       {selectedApplication ? (
