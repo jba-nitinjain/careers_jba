@@ -1,7 +1,7 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,10 +10,22 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email == 'nitinjain@jainbafna.com';
     }
 
-    // Public application submission (unauthenticated users may create applications)
+    // Rules for the 'applications' collection
     match /applications/{applicationId} {
+      // Allow ANYONE (including unauthenticated users) to create an application.
       allow create: if true;
+
+      // Only the specified admin can read, update, or delete applications.
       allow read, update, delete: if isAdmin();
+    }
+
+    // Rules for the 'messages' collection
+    match /messages/{messageId} {
+      // Allow any authenticated user to create (write) a new message.
+      allow create: if request.auth != null;
+
+      // For security, deny anyone from reading, updating, or deleting messages.
+      allow read, update, delete: if false;
     }
 
     // Default-deny everything else.
