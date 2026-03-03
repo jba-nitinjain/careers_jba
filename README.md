@@ -75,3 +75,17 @@ firebase deploy --only firestore:rules,storage
 
 After deploying rules, admin status updates and delete actions (including file deletion) should stop returning `permission-denied` / `storage/unauthorized` for the configured admin account.
 
+
+## Storage Rules Correction
+
+The rule block you shared as `firestore.rules` is actually a **Storage rule** block (`service firebase.storage`).
+
+This repo now uses a corrected `storage.rules` that supports:
+- anonymous applicant uploads to `resumes/anonymous/*` with file-size/type validation,
+- authenticated user uploads to `resumes/{uid}/*` with UID ownership checks,
+- admin-only read/delete for anonymous files, and admin-or-owner read/delete for user folders.
+
+This aligns with:
+- applicant upload path used by the form (`resumes/anonymous/...`),
+- admin dashboard resume access/delete needs,
+- safer validation constraints (max 5MB and allowed document MIME types).

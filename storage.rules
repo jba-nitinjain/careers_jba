@@ -10,14 +10,31 @@ service firebase.storage {
       return isSignedIn() && request.auth.token.email == 'nitinjain@jainbafna.com';
     }
 
-    // Applicants can upload resumes, but cannot read/delete.
-    // Admin can read/delete all resumes.
-    match /resumes/{userId}/{fileName} {
-      allow write: if true;
-      allow read, delete: if isAdmin();
+    function isAllowedResumeType() {
+      return request.resource != null
+        && request.resource.contentType.matches('application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     }
 
-    // Default-deny everything else.
+    function isAllowedResumeSize() {
+      return request.resource != null && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Anonymous applicant uploads: resumes/anonymous/<file>
+    match /resumes/anonymous/{fileName} {
+      allow read, delete: if isAdmin();
+      allow write: if isAllowedResumeSize() && isAllowedResumeType();
+    }
+
+    // Authenticated applicant uploads: resumes/<uid>/<file>
+    match /resumes/{userId}/{fileName} {
+      allow read, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow write: if isSignedIn()
+                   && request.auth.uid == userId
+                   && isAllowedResumeSize()
+                   && isAllowedResumeType();
+    }
+
+    // Default deny
     match /{allPaths=**} {
       allow read, write: if false;
     }
