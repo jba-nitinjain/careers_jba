@@ -21,7 +21,7 @@ export function getFirebaseAuthErrorMessage(error: unknown, currentHost: string)
   }
 
   if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
-    return ['Google sign-in popup was blocked or closed.', 'Enable popups for this site and retry.'].join(' ');
+    return 'Google sign-in popup was blocked or closed. Enable popups for this site and retry.';
   }
 
   if (code === 'auth/web-storage-unsupported' || /third-party cookie/i.test(message)) {
@@ -29,6 +29,18 @@ export function getFirebaseAuthErrorMessage(error: unknown, currentHost: string)
       'Your browser is blocking storage/cookies required for OAuth.',
       'Allow third-party cookies for this site (or temporarily disable strict tracking prevention), then retry.',
     ].join(' ');
+  }
+
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+    return 'Invalid username/email or password. Please verify your credentials and try again.';
+  }
+
+  if (code === 'auth/invalid-email') {
+    return 'Please enter a valid email address for username/email sign-in.';
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return 'Too many failed attempts. Please wait a few minutes before trying again.';
   }
 
   return `Sign-in Error: ${message || fallbackMessage}`;

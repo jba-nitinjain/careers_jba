@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { auth, db, googleProvider, storage } from '../../../firebase';
@@ -19,7 +19,8 @@ interface UseAdminApplicationsResult {
   setSearchTerm: (value: string) => void;
   setPositionFilter: (value: 'all' | 'article' | 'paid_assistant') => void;
   setSortConfig: (value: SortConfig) => void;
-  signIn: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithCredentials: (email: string, password: string) => Promise<void>;
   signOutAdmin: () => Promise<void>;
   refreshApplications: () => Promise<void>;
 }
@@ -97,10 +98,27 @@ export function useAdminApplications(): UseAdminApplicationsResult {
     return () => unsubscribe();
   }, [refreshApplications]);
 
-  const signIn = useCallback(async () => {
+  const signInWithGoogle = useCallback(async () => {
     setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
+    } catch (signInError) {
+      const host = typeof window === 'undefined' ? 'this domain' : window.location.hostname;
+      setError(getFirebaseAuthErrorMessage(signInError, host));
+    }
+  }, []);
+
+  const signInWithCredentials = useCallback(async (email: string, password: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
+      setError('Username/email and password are required.');
+      return;
+    }
+
+    setError(null);
+    try {
+      await signInWithEmailAndPassword(auth, normalizedEmail, password);
     } catch (signInError) {
       const host = typeof window === 'undefined' ? 'this domain' : window.location.hostname;
       setError(getFirebaseAuthErrorMessage(signInError, host));
@@ -156,7 +174,8 @@ export function useAdminApplications(): UseAdminApplicationsResult {
     setSearchTerm,
     setPositionFilter,
     setSortConfig,
-    signIn,
+    signInWithGoogle,
+    signInWithCredentials,
     signOutAdmin,
     refreshApplications,
   };

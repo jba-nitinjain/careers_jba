@@ -26,7 +26,8 @@ export default function AdminDashboard() {
     setSortConfig,
     setSearchTerm,
     setPositionFilter,
-    signIn,
+    signInWithGoogle,
+    signInWithCredentials,
     signOutAdmin,
     refreshApplications,
   } = useAdminApplications();
@@ -52,7 +53,13 @@ export default function AdminDashboard() {
   }
 
   if (!user) {
-    return <AdminSignInCard error={error} onSignIn={signIn} />;
+    return (
+      <AdminSignInCard
+        error={error}
+        onGoogleSignIn={signInWithGoogle}
+        onCredentialSignIn={signInWithCredentials}
+      />
+    );
   }
 
   return (

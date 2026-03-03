@@ -7,13 +7,14 @@ This project contains:
 ## Admin Dashboard Feature Documentation
 
 ### Current core features
-- **Google-authenticated admin access** restricted to a specific admin email.
+- **Dual admin authentication**: Google popup sign-in or username/email + password sign-in (Firebase Auth), still restricted to a specific admin email.
 - **Application ingestion from Firestore** with newest-first ordering.
 - **Resume link hydration** from `resumeUrl` or fallback via `resumePath` from Firebase Storage.
 - **Robust auth error guidance** for:
   - unauthorized OAuth domain
   - popup blocked/closed events
   - third-party cookie/storage constraints
+  - invalid credential/email and lockout states for username/password login
 - **Application details modal** with contact, skills, experience, and references.
 
 ### New UI/UX implemented in this update
