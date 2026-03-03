@@ -18,6 +18,7 @@ This project contains:
 - **Application details modal** with contact, skills, experience, and references.
 - **Application workflow actions**: mark each application as `new`, `rejected`, `called for interview`, or `selected`.
 - **Safe delete action**: delete application record and remove the corresponding resume file from Firebase Storage (if present).
+- **Permission-aware mutation feedback**: admin sees explicit guidance when Firestore/Storage rules block status updates or file deletion.
 
 ### New UI/UX implemented in this update
 - **Modular admin architecture** (hooks + focused components) for maintainability.
@@ -45,6 +46,7 @@ Admin dashboard logic now lives in:
 - `src/features/admin/components/*`
 - `src/features/admin/utils/applicationFormatting.ts`
 - `src/features/admin/utils/applicationActions.ts`
+- `src/features/admin/utils/firebaseOperationErrors.ts`
 - `src/features/admin/hooks/useApplicationMutations.ts`
 - `src/types/admin.ts`
 

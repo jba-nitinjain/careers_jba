@@ -33,7 +33,7 @@ export default function AdminDashboard() {
     refreshApplications,
   } = useAdminApplications();
 
-  const { pendingApplicationId, mutationError, handleStatusChange, handleDeleteApplication } = useApplicationMutations();
+  const { pendingApplicationId, mutationError, mutationWarning, handleStatusChange, handleDeleteApplication } = useApplicationMutations();
 
   const handleSortChange = (key: AdminSortKey) => {
     setSortConfig({
@@ -83,6 +83,7 @@ export default function AdminDashboard() {
           <p className="text-sm text-gray-600 mt-1">{headerDescription}</p>
           {error ? <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div> : null}
           {mutationError ? <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-md text-sm">{mutationError}</div> : null}
+          {mutationWarning ? <div className="mt-3 p-3 bg-amber-50 text-amber-800 rounded-md text-sm">{mutationWarning}</div> : null}
         </header>
 
         <AdminStats applications={applications} />
