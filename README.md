@@ -51,3 +51,27 @@ Admin dashboard logic now lives in:
 - `src/types/admin.ts`
 
 This split keeps files small and focused, and now includes modular mutation handlers for status and delete operations.
+
+
+## Fix for `permission-denied` on Status Update/Delete
+
+The admin UI can only perform status updates and deletes if Firestore/Storage rules explicitly allow the authenticated admin user.
+
+This repo now includes:
+- `firestore.rules`
+- `storage.rules`
+- `firebase.json`
+
+Current rule behavior:
+- Anyone can create an application document and upload a resume.
+- Only `nitinjain@jainbafna.com` can read/update/delete applications.
+- Only `nitinjain@jainbafna.com` can read/delete resume files.
+
+### Deploy rules
+
+```bash
+firebase deploy --only firestore:rules,storage
+```
+
+After deploying rules, admin status updates and delete actions (including file deletion) should stop returning `permission-denied` / `storage/unauthorized` for the configured admin account.
+
