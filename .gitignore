@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase CLI generated files
+.firebaserc
+firestore.indexes.json
+
+# Runtime / temp files
+server_pid.txt
+*.txt
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
