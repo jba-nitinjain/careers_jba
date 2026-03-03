@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'nitinjain@jainbafna.com';
+    }
+
+    function isAllowedResumeType() {
+      return request.resource != null
+        && request.resource.contentType.matches('application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    }
+
+    function isAllowedResumeSize() {
+      return request.resource != null && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Anonymous applicant uploads: resumes/anonymous/<file>
+    match /resumes/anonymous/{fileName} {
+      allow read, delete: if isAdmin();
+      allow write: if isAllowedResumeSize() && isAllowedResumeType();
+    }
+
+    // Authenticated applicant uploads: resumes/<uid>/<file>
+    match /resumes/{userId}/{fileName} {
+      allow read, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow write: if isSignedIn()
+                   && request.auth.uid == userId
+                   && isAllowedResumeSize()
+                   && isAllowedResumeType();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

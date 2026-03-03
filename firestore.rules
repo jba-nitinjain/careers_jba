@@ -1,0 +1,24 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'nitinjain@jainbafna.com';
+    }
+
+    // Public application submission (unauthenticated users may create applications)
+    match /applications/{applicationId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Default-deny everything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
