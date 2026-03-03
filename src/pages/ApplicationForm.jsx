@@ -315,6 +315,9 @@ const ApplicationForm = () => {
                 <TextAreaField label="Current Address" id="address" required rows={2} value={formData.address} onChange={handleChange} />
               </div>
 
+              <InputField label="Current Area/Locality in Chennai (e.g., T. Nagar, Adyar)" id="current_location" required value={formData.current_location} onChange={handleChange} />
+              <InputField label="LinkedIn Profile URL" id="linkedin_url" type="url" value={formData.linkedin_url} onChange={handleChange} />
+
               <div className="sm:col-span-2">
                 <label className="flex items-center text-sm font-medium text-gray-700">
                   <input
@@ -339,9 +342,6 @@ const ApplicationForm = () => {
                   disabled={formData.same_address}
                 />
               </div>
-
-              <InputField label="Current Area/Locality in Chennai (e.g., T. Nagar, Adyar)" id="current_location" required value={formData.current_location} onChange={handleChange} />
-              <InputField label="LinkedIn Profile URL" id="linkedin_url" type="url" value={formData.linkedin_url} onChange={handleChange} />
 
               <div className="sm:col-span-2">
                 <span className="block text-sm font-medium text-gray-700 mb-2">Willingness to Travel for Outstation Audits <span className="text-red-500">*</span></span>
