@@ -4,7 +4,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes } from 'firebase/storage';
 import { Building2, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
-const InputField = ({ label, id, type = 'text', required, pattern, value, onChange, placeholder }) => (
+const InputField = ({ label, id, type = 'text', required, pattern, value, onChange, onBlur, placeholder, error }) => (
   <div>
     <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
       {label} {required && <span className="text-red-500">*</span>}
@@ -17,9 +17,11 @@ const InputField = ({ label, id, type = 'text', required, pattern, value, onChan
       pattern={pattern}
       value={value}
       onChange={onChange}
+      onBlur={onBlur}
       placeholder={placeholder}
-      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+      className={`w-full px-3 py-2 border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
     />
+    {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
   </div>
 );
 
@@ -83,13 +85,22 @@ const ApplicationForm = () => {
 
   const [resumeFile, setResumeFile] = useState(null);
   const [fileError, setFileError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [mobileError, setMobileError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    if (type === 'checkbox' && name === 'platforms') {
+    if (name === 'current_salary' || name === 'expected_salary' || name === 'expected_stipend') {
+      const numericValue = value.replace(/[^0-9]/g, '');
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
+    } else if (name === 'mobile_number' || name === 'ref1_contact' || name === 'ref2_contact') {
+      const numericValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
+    } else if (type === 'checkbox' && name === 'platforms') {
       if (checked) {
         setFormData(prev => ({ ...prev, platforms: [...prev.platforms, value] }));
       } else {
@@ -118,6 +129,24 @@ const ApplicationForm = () => {
       setFormData(prev => ({ ...prev, [name]: properCase }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleEmailBlur = (e) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (e.target.value && !emailRegex.test(e.target.value)) {
+      setEmailError('Please enter a valid email address.');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handleMobileBlur = (e) => {
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (e.target.value && !mobileRegex.test(e.target.value)) {
+      setMobileError('Mobile number must be 10 digits starting with 6, 7, 8, or 9.');
+    } else {
+      setMobileError('');
     }
   };
 
@@ -216,8 +245,6 @@ const ApplicationForm = () => {
 
       await addDoc(collection(db, "applications"), applicationData);
 
-      setSubmitStatus({ type: 'success', message: 'Your application has been submitted successfully. We will get back to you shortly.' });
-
       // Reset form
       setFormData({
         full_name: '', email: '', mobile_number: '', address: '', hometown_address: '', same_address: false,
@@ -235,8 +262,12 @@ const ApplicationForm = () => {
       });
       setResumeFile(null);
       setFileError('');
+      setEmailError('');
+      setMobileError('');
       // reset file input visually
       document.getElementById('resume').value = '';
+
+      setShowSuccessPopup(true);
 
     } catch (error) {
       setSubmitStatus({ type: 'error', message: `Error submitting application: ${error.message}` });
@@ -247,6 +278,11 @@ const ApplicationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (emailError || mobileError) {
+      setSubmitStatus({ type: 'error', message: 'Please fix the errors before submitting.' });
+      return;
+    }
 
     if (formData.platforms.length === 0) {
       setSubmitStatus({ type: 'error', message: 'Please select at least one accounting platform.' });
@@ -297,8 +333,28 @@ const ApplicationForm = () => {
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
               <InputField label="Full Name" id="full_name" required value={formData.full_name} onChange={handleChange} />
               <InputField label="Date of Birth" id="dob" type="date" required value={formData.dob} onChange={handleChange} />
-              <InputField label="Email Address" id="email" type="email" required value={formData.email} onChange={handleChange} />
-              <InputField label="Mobile Number" id="mobile_number" type="tel" required pattern="[6-9][0-9]{9}" placeholder="10-digit number" value={formData.mobile_number} onChange={handleChange} />
+              <InputField
+                label="Email Address"
+                id="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                onBlur={handleEmailBlur}
+                error={emailError}
+              />
+              <InputField
+                label="Mobile Number"
+                id="mobile_number"
+                type="tel"
+                required
+                pattern="[6-9][0-9]{9}"
+                placeholder="10-digit number"
+                value={formData.mobile_number}
+                onChange={handleChange}
+                onBlur={handleMobileBlur}
+                error={mobileError}
+              />
 
               <div className="sm:col-span-2">
                 <TextAreaField label="Current Address" id="address" required rows={2} value={formData.address} onChange={handleChange} />
@@ -636,6 +692,27 @@ const ApplicationForm = () => {
 
         </form>
       </div>
+
+      {/* Success Popup Overlay */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-50 transition-opacity">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 text-center transform transition-all animate-fadeIn">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Application Submitted!</h3>
+            <p className="text-gray-600 mb-6">
+              Thank you for applying to Jain Bafna & Associates. We have received your application successfully and will get back to you shortly.
+            </p>
+            <button
+              onClick={() => setShowSuccessPopup(false)}
+              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

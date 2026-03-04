@@ -4,9 +4,14 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOu
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { auth, db, googleProvider, storage } from '../../../firebase';
-import type { ApplicationRecord, SortConfig } from '../../../types/admin';
+import type { ApplicationRecord, ApplicationStatus, SortConfig } from '../../../types/admin';
 import { getFirebaseAuthErrorMessage } from '../../../utils/firebaseAuthErrors';
 import { normalizeText } from '../utils/applicationFormatting';
+
+export interface ApplicationCounts {
+  positions: Record<'all' | 'article' | 'paid_assistant', number>;
+  statuses: Record<ApplicationStatus | 'all', number>;
+}
 
 interface UseAdminApplicationsResult {
   user: User | null;
@@ -15,9 +20,12 @@ interface UseAdminApplicationsResult {
   sortConfig: SortConfig;
   searchTerm: string;
   positionFilter: 'all' | 'article' | 'paid_assistant';
+  statusFilter: ApplicationStatus | 'all';
   applications: ApplicationRecord[];
+  counts: ApplicationCounts;
   setSearchTerm: (value: string) => void;
   setPositionFilter: (value: 'all' | 'article' | 'paid_assistant') => void;
+  setStatusFilter: (value: ApplicationStatus | 'all') => void;
   setSortConfig: (value: SortConfig) => void;
   signInWithGoogle: () => Promise<void>;
   signInWithCredentials: (email: string, password: string) => Promise<void>;
@@ -37,6 +45,7 @@ export function useAdminApplications(): UseAdminApplicationsResult {
   const [applications, setApplications] = useState<ApplicationRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [positionFilter, setPositionFilter] = useState<'all' | 'article' | 'paid_assistant'>('all');
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all');
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'submittedAt', direction: 'desc' });
 
   const refreshApplications = useCallback(async () => {
@@ -129,18 +138,45 @@ export function useAdminApplications(): UseAdminApplicationsResult {
     await signOut(auth);
   }, []);
 
-  const filteredApplications = useMemo(() => {
+  const { filteredList, counts } = useMemo(() => {
     const queryText = normalizeText(searchTerm);
-    const searched = applications.filter((application) => {
+
+    const positions: Record<'all' | 'article' | 'paid_assistant', number> = { all: 0, article: 0, paid_assistant: 0 };
+    const statuses: Record<ApplicationStatus | 'all', number> = { all: 0, new: 0, called_for_interview: 0, selected: 0, rejected: 0 };
+    const searched: ApplicationRecord[] = [];
+
+    applications.forEach((application) => {
       const name = normalizeText(application.fullName);
       const email = normalizeText(application.email);
       const position = normalizeText(application.position);
       const matchesSearch = !queryText || name.includes(queryText) || email.includes(queryText) || position.includes(queryText);
-      const matchesPosition = positionFilter === 'all' || application.position === positionFilter;
-      return matchesSearch && matchesPosition;
+
+      if (!matchesSearch) return;
+
+      const appStatus = application.adminStatus || 'new';
+      const isCurrentStatus = statusFilter === 'all' || appStatus === statusFilter;
+      const isCurrentPosition = positionFilter === 'all' || application.position === positionFilter;
+
+      if (isCurrentStatus) {
+        positions.all++;
+        if (application.position === 'article') positions.article++;
+        if (application.position === 'paid_assistant') positions.paid_assistant++;
+      }
+
+      if (isCurrentPosition) {
+        statuses.all++;
+        if (appStatus === 'new') statuses.new++;
+        if (appStatus === 'called_for_interview') statuses.called_for_interview++;
+        if (appStatus === 'selected') statuses.selected++;
+        if (appStatus === 'rejected') statuses.rejected++;
+      }
+
+      if (isCurrentPosition && isCurrentStatus) {
+        searched.push(application);
+      }
     });
 
-    return [...searched].sort((left, right) => {
+    const sortedList = [...searched].sort((left, right) => {
       const leftValue = left[sortConfig.key];
       const rightValue = right[sortConfig.key];
 
@@ -161,7 +197,9 @@ export function useAdminApplications(): UseAdminApplicationsResult {
       if (normalizedLeft > normalizedRight) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [applications, positionFilter, searchTerm, sortConfig]);
+
+    return { filteredList: sortedList, counts: { positions, statuses } };
+  }, [applications, positionFilter, statusFilter, searchTerm, sortConfig]);
 
   return {
     user,
@@ -170,9 +208,12 @@ export function useAdminApplications(): UseAdminApplicationsResult {
     sortConfig,
     searchTerm,
     positionFilter,
-    applications: filteredApplications,
+    statusFilter,
+    applications: filteredList,
+    counts,
     setSearchTerm,
     setPositionFilter,
+    setStatusFilter,
     setSortConfig,
     signInWithGoogle,
     signInWithCredentials,
