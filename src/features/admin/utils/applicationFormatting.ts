@@ -16,7 +16,13 @@ export function getPositionLabel(position?: string): string {
 export function getSubmissionDate(application: ApplicationRecord): string {
   const submittedAt = application.submittedAt;
   if (!submittedAt || typeof submittedAt.toDate !== 'function') return 'N/A';
-  return submittedAt.toDate().toLocaleDateString();
+
+  const date = submittedAt.toDate();
+  const day = String(date.getDate()).padStart(2, '0');
+  const monthInfo = date.toLocaleString('default', { month: 'short' });
+  const year = date.getFullYear();
+
+  return `${day}/${monthInfo}/${year}`;
 }
 
 /**

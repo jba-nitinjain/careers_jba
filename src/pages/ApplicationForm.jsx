@@ -239,7 +239,6 @@ const ApplicationForm = () => {
       document.getElementById('resume').value = '';
 
     } catch (error) {
-      console.error("Submission error:", error);
       setSubmitStatus({ type: 'error', message: `Error submitting application: ${error.message}` });
     } finally {
       setIsSubmitting(false);
@@ -250,11 +249,11 @@ const ApplicationForm = () => {
     e.preventDefault();
 
     if (formData.platforms.length === 0) {
-      alert("Please select at least one accounting platform.");
+      setSubmitStatus({ type: 'error', message: 'Please select at least one accounting platform.' });
       return;
     }
     if (!resumeFile) {
-      alert("Please upload your resume.");
+      setSubmitStatus({ type: 'error', message: 'Please upload your resume.' });
       return;
     }
 
