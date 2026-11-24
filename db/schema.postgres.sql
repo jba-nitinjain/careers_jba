@@ -27,8 +27,10 @@ CREATE INDEX IF NOT EXISTS ix_applications_ip_recent ON applications (client_ip_
 CREATE TABLE IF NOT EXISTS users (
   id            serial PRIMARY KEY,
   username      varchar(254) NOT NULL UNIQUE,
-  password_hash varchar(255) NOT NULL,
+  password      varchar(255) NOT NULL,  -- hash; column name set by the eAccountsApp connection
   role          varchar(30)  NOT NULL DEFAULT 'admin',
   mobile        varchar(20),
+  email         varchar(254),
+  active        smallint     NOT NULL DEFAULT 1,
   created_at    timestamp    NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
 );
