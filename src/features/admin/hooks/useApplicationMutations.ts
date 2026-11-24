@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { ApplicationRecord, ApplicationStatus } from '../../../types/admin';
 import { deleteApplicationAndResume, updateApplicationStatus } from '../utils/applicationActions';
-import { getAdminFirestoreActionErrorMessage } from '../utils/firebaseOperationErrors';
+import { errorMessage } from '../../../lib/api';
 
 interface UseApplicationMutationsResult {
   pendingApplicationId: string | null;
@@ -34,7 +34,7 @@ export function useApplicationMutations(): UseApplicationMutationsResult {
         await onRefresh();
       } catch (error) {
         console.error('Failed to update application status', error);
-        setMutationError(getAdminFirestoreActionErrorMessage(error, 'status'));
+        setMutationError(`Could not update status. ${errorMessage(error)}`);
       } finally {
         setPendingApplicationId(null);
       }
@@ -57,7 +57,7 @@ export function useApplicationMutations(): UseApplicationMutationsResult {
         setMutationWarning(warningMessage);
       } catch (error) {
         console.error('Failed to delete application', error);
-        setMutationError(getAdminFirestoreActionErrorMessage(error, 'delete'));
+        setMutationError(`Could not delete application. ${errorMessage(error)}`);
       } finally {
         setPendingApplicationId(null);
       }

@@ -1,10 +1,37 @@
 import React, { useState } from 'react';
-import { db, storage } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes } from 'firebase/storage';
-import { Building2, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { apiUpload, errorMessage } from '../lib/api';
 
-const InputField = ({ label, id, type = 'text', required, pattern, value, onChange, onBlur, placeholder, error }) => (
+const MAX_RESUME_BYTES = 4 * 1024 * 1024;
+
+const EXPERIENCED_POSITIONS = ['paid_assistant', 'audit_manager'];
+
+const EMPTY_FORM = {
+  full_name: '', email: '', mobile_number: '', address: '', hometown_address: '', same_address: false,
+  dob: '', current_location: '', linkedin_url: '', willing_to_travel: '',
+  position: '', ca_status: '', ca_attempts: '', itt_oc_status: '', availability_to_join: '', degree_status: '',
+  highest_qualification: '', other_qualifications: '', notice_period: '', domain_expertise: [],
+  current_employer: '', years_experience: '', current_salary: '', expected_salary: '', audit_team_size: '',
+  expected_stipend: '', prior_experience: '',
+  platforms: [], other_platform: '',
+  excel_skill: '', word_skill: '', powerpoint_skill: '',
+  strengths_weaknesses: '', contribution: '',
+  how_heard: '', how_heard_other: '',
+  ref1_name: '', ref1_relationship: '', ref1_contact: '', ref1_email: '',
+  ref2_name: '', ref2_relationship: '', ref2_contact: '', ref2_email: '',
+};
+
+// Latest acceptable date of birth (applicant at least 16 years old), as yyyy-mm-dd for the date picker.
+const MAX_DOB = (() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 16);
+  return d.toISOString().slice(0, 10);
+})();
+
+/** Capitalises the first letter of each word, leaving the rest as typed (keeps "McDonald", "R.K."). */
+const capitaliseWords = (value) => value.replace(/(^|\s)(\S)/g, (_, space, ch) => space + ch.toUpperCase());
+
+const InputField = ({ label, id, type = 'text', required, pattern, value, onChange, onBlur, placeholder, error, max }) => (
   <div>
     <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
       {label} {required && <span className="text-red-500">*</span>}
@@ -15,6 +42,7 @@ const InputField = ({ label, id, type = 'text', required, pattern, value, onChan
       name={id}
       required={required}
       pattern={pattern}
+      max={max}
       value={value}
       onChange={onChange}
       onBlur={onBlur}
@@ -68,20 +96,8 @@ const TextAreaField = ({ label, id, required, rows = 3, value, onChange, placeho
 );
 
 const ApplicationForm = () => {
-  const [formData, setFormData] = useState({
-    full_name: '', email: '', mobile_number: '', address: '', hometown_address: '', same_address: false,
-    dob: '', current_location: '', linkedin_url: '', willing_to_travel: '',
-    position: '', ca_status: '', ca_attempts: '', itt_oc_status: '', availability_to_join: '', degree_status: '',
-    highest_qualification: '', other_qualifications: '', notice_period: '', domain_expertise: [],
-    current_employer: '', years_experience: '', current_salary: '', expected_salary: '',
-    expected_stipend: '', prior_experience: '',
-    platforms: [], other_platform: '',
-    excel_skill: '', word_skill: '', powerpoint_skill: '',
-    strengths_weaknesses: '', contribution: '',
-    how_heard: '', how_heard_other: '',
-    ref1_name: '', ref1_relationship: '', ref1_contact: '', ref1_email: '',
-    ref2_name: '', ref2_relationship: '', ref2_contact: '', ref2_email: '',
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [honeypot, setHoneypot] = useState('');
 
   const [resumeFile, setResumeFile] = useState(null);
   const [fileError, setFileError] = useState('');
@@ -125,8 +141,7 @@ const ApplicationForm = () => {
         setFormData(prev => ({ ...prev, domain_expertise: prev.domain_expertise.filter(d => d !== value) }));
       }
     } else if (name === 'full_name') {
-      const properCase = value.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-      setFormData(prev => ({ ...prev, [name]: properCase }));
+      setFormData(prev => ({ ...prev, [name]: capitaliseWords(value) }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -153,8 +168,8 @@ const ApplicationForm = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setFileError('File size must be less than 5MB');
+      if (file.size > MAX_RESUME_BYTES) {
+        setFileError('File size must be less than 4 MB');
         setResumeFile(null);
         e.target.value = ''; // Reset input
       } else {
@@ -166,111 +181,24 @@ const ApplicationForm = () => {
 
   const performSubmission = async () => {
     try {
-      const finalPlatforms = formData.platforms.map(p => p === 'Other' ? formData.other_platform : p);
-      let finalHowHeard = formData.how_heard === 'Other' ? formData.how_heard_other : formData.how_heard;
+      // The server validates and maps these fields; only the raw form state is sent.
+      const form = new FormData();
+      form.append('payload', JSON.stringify(formData));
+      form.append('resume', resumeFile);
+      form.append('website', honeypot);
+      await apiUpload('/api/applications', form);
 
-      const references = [];
-      if (formData.ref1_name) {
-        references.push({
-          name: formData.ref1_name,
-          relationship: formData.ref1_relationship,
-          contact: formData.ref1_contact,
-          email: formData.ref1_email
-        });
-      }
-      if (formData.ref2_name) {
-        references.push({
-          name: formData.ref2_name,
-          relationship: formData.ref2_relationship,
-          contact: formData.ref2_contact,
-          email: formData.ref2_email
-        });
-      }
-
-      const applicationData = {
-        fullName: formData.full_name,
-        email: formData.email,
-        mobileNumber: formData.mobile_number,
-        address: formData.address,
-        hometownAddress: formData.hometown_address,
-        dob: formData.dob,
-        currentLocation: formData.current_location,
-        linkedinUrl: formData.linkedin_url,
-        willingToTravel: formData.willing_to_travel,
-        position: formData.position,
-        qualifications: formData.other_qualifications,
-        platforms: finalPlatforms,
-        excelSkill: formData.excel_skill,
-        wordSkill: formData.word_skill,
-        powerpointSkill: formData.powerpoint_skill,
-        strengthsWeaknesses: formData.strengths_weaknesses,
-        contribution: formData.contribution,
-        howHeard: finalHowHeard,
-        references: references,
-        submittedAt: serverTimestamp(),
-      };
-
-      if (formData.position === 'article') {
-        applicationData.caStatus = formData.ca_status;
-        applicationData.caAttempts = formData.ca_attempts;
-        applicationData.ittOcStatus = formData.itt_oc_status;
-        applicationData.availabilityToJoin = formData.availability_to_join;
-        applicationData.degreeStatus = formData.degree_status;
-        applicationData.expectedStipend = formData.expected_stipend;
-        applicationData.priorExperience = formData.prior_experience;
-      } else {
-        applicationData.highestQualification = formData.highest_qualification;
-        applicationData.domainExpertise = formData.domain_expertise;
-        applicationData.noticePeriod = formData.notice_period;
-        applicationData.currentEmployer = formData.current_employer;
-        applicationData.yearsExperience = parseFloat(formData.years_experience) || 0;
-        applicationData.currentSalary = formData.current_salary;
-        applicationData.expectedSalary = formData.expected_salary;
-      }
-
-      let resumePath = '';
-      if (resumeFile) {
-        // Use a combination of timestamp and original name to avoid collisions
-        const timestamp = Date.now();
-        const safeName = resumeFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const storageRef = ref(storage, `resumes/anonymous/${timestamp}_${safeName}`);
-        const uploadResult = await uploadBytes(storageRef, resumeFile);
-
-        // We do NOT call getDownloadURL() here because the new Storage rules
-        // prevent unauthenticated users from reading files, which getDownloadURL does.
-        // Instead, we store the full path and let the Admin Dashboard fetch the URL.
-        resumePath = uploadResult.ref.fullPath;
-      }
-      applicationData.resumePath = resumePath;
-
-      await addDoc(collection(db, "applications"), applicationData);
-
-      // Reset form
-      setFormData({
-        full_name: '', email: '', mobile_number: '', address: '', hometown_address: '', same_address: false,
-        dob: '', current_location: '', linkedin_url: '', willing_to_travel: '',
-        position: '', ca_status: '', ca_attempts: '', itt_oc_status: '', availability_to_join: '', degree_status: '',
-        highest_qualification: '', other_qualifications: '', notice_period: '', domain_expertise: [],
-        current_employer: '', years_experience: '', current_salary: '', expected_salary: '',
-        expected_stipend: '', prior_experience: '',
-        platforms: [], other_platform: '',
-        excel_skill: '', word_skill: '', powerpoint_skill: '',
-        strengths_weaknesses: '', contribution: '',
-        how_heard: '', how_heard_other: '',
-        ref1_name: '', ref1_relationship: '', ref1_contact: '', ref1_email: '',
-        ref2_name: '', ref2_relationship: '', ref2_contact: '', ref2_email: '',
-      });
+      setFormData(EMPTY_FORM);
       setResumeFile(null);
       setFileError('');
       setEmailError('');
       setMobileError('');
-      // reset file input visually
-      document.getElementById('resume').value = '';
+      const resumeInput = document.getElementById('resume');
+      if (resumeInput) resumeInput.value = '';
 
       setShowSuccessPopup(true);
-
     } catch (error) {
-      setSubmitStatus({ type: 'error', message: `Error submitting application: ${error.message}` });
+      setSubmitStatus({ type: 'error', message: errorMessage(error) });
     } finally {
       setIsSubmitting(false);
     }
@@ -307,14 +235,18 @@ const ApplicationForm = () => {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center p-3 bg-indigo-600 rounded-full mb-4 shadow-lg">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            Join Our Team at Jain Bafna & Associates
+          <a href="https://jainbafna.com" className="inline-flex items-center gap-3 mb-6">
+            <img src="/images/ca_logo.png" alt="CA India logo" className="h-12 w-auto" />
+            <span className="text-left leading-tight">
+              <span className="block font-serif text-xl font-bold text-indigo-600">Jain Bafna &amp; Associates</span>
+              <span className="block text-xs uppercase tracking-widest text-gray-500">Chartered Accountants · Est. 1982</span>
+            </span>
+          </a>
+          <h1 className="text-4xl font-bold text-indigo-600 sm:text-5xl">
+            Join Our Professional Team
           </h1>
           <p className="mt-4 text-lg text-gray-500">
-            We are looking for talented individuals to grow with us. Please fill out the form below to apply.
+            Openings at our Chennai Head Office for Audit Managers, Paid Assistants and Article Clerks. Please fill out the form below to apply.
           </p>
         </div>
 
@@ -326,13 +258,18 @@ const ApplicationForm = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Hidden from people; bots that fill every field are silently ignored. */}
+          <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', width: 1, height: 1, overflow: 'hidden' }}>
+            <label htmlFor="website">Website</label>
+            <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+          </div>
 
           {/* Section 1: Personal Info */}
           <div className="bg-white px-6 py-8 shadow sm:rounded-lg">
             <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">1. Personal Information</h2>
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
               <InputField label="Full Name" id="full_name" required value={formData.full_name} onChange={handleChange} />
-              <InputField label="Date of Birth" id="dob" type="date" required value={formData.dob} onChange={handleChange} />
+              <InputField label="Date of Birth" id="dob" type="date" required max={MAX_DOB} value={formData.dob} onChange={handleChange} />
               <InputField
                 label="Email Address"
                 id="email"
@@ -415,8 +352,9 @@ const ApplicationForm = () => {
                 value={formData.position}
                 onChange={handleChange}
                 options={[
-                  { value: 'article', label: 'Article Assistant' },
-                  { value: 'paid_assistant', label: 'Paid Assistant / Audit Assistant' }
+                  { value: 'article', label: 'Article Clerk (Articleship)' },
+                  { value: 'paid_assistant', label: 'Paid Assistant' },
+                  { value: 'audit_manager', label: 'Audit Manager' }
                 ]}
               />
 
@@ -488,7 +426,7 @@ const ApplicationForm = () => {
                 </>
               )}
 
-              {formData.position === 'paid_assistant' && (
+              {EXPERIENCED_POSITIONS.includes(formData.position) && (
                 <SelectField
                   label="Highest Qualification"
                   id="highest_qualification"
@@ -512,7 +450,7 @@ const ApplicationForm = () => {
           </div>
 
           {/* Section 3: Conditional Experience */}
-          {formData.position === 'paid_assistant' && (
+          {EXPERIENCED_POSITIONS.includes(formData.position) && (
             <div className="bg-white px-6 py-8 shadow sm:rounded-lg transition-all duration-300">
               <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">3. Professional Experience</h2>
               <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
@@ -547,6 +485,9 @@ const ApplicationForm = () => {
                 />
                 <InputField label="Current CTC (Per Annum)" id="current_salary" required value={formData.current_salary} onChange={handleChange} />
                 <InputField label="Expected CTC (Per Annum)" id="expected_salary" required value={formData.expected_salary} onChange={handleChange} />
+                {formData.position === 'audit_manager' && (
+                  <InputField label="Largest audit team you have led (number of people)" id="audit_team_size" type="number" value={formData.audit_team_size} onChange={handleChange} />
+                )}
               </div>
             </div>
           )}

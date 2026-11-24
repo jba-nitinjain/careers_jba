@@ -1,50 +1,42 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { User } from 'firebase/auth';
-import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { getDownloadURL, ref } from 'firebase/storage';
-import { auth, db, googleProvider, storage } from '../../../firebase';
-import type { ApplicationRecord, ApplicationStatus, SortConfig } from '../../../types/admin';
-import { getFirebaseAuthErrorMessage } from '../../../utils/firebaseAuthErrors';
+import { ApiError, apiGet, apiSend, errorMessage } from '../../../lib/api';
+import type { AdminUser, ApplicationRecord, ApplicationStatus, PositionFilter, SortConfig } from '../../../types/admin';
 import { normalizeText } from '../utils/applicationFormatting';
 
 export interface ApplicationCounts {
-  positions: Record<'all' | 'article' | 'paid_assistant', number>;
+  positions: Record<PositionFilter, number>;
   statuses: Record<ApplicationStatus | 'all', number>;
 }
 
 interface UseAdminApplicationsResult {
-  user: User | null;
+  user: AdminUser | null;
   loading: boolean;
   error: string | null;
   sortConfig: SortConfig;
   searchTerm: string;
-  positionFilter: 'all' | 'article' | 'paid_assistant';
+  positionFilter: PositionFilter;
   statusFilter: ApplicationStatus | 'all';
   applications: ApplicationRecord[];
   counts: ApplicationCounts;
   setSearchTerm: (value: string) => void;
-  setPositionFilter: (value: 'all' | 'article' | 'paid_assistant') => void;
+  setPositionFilter: (value: PositionFilter) => void;
   setStatusFilter: (value: ApplicationStatus | 'all') => void;
   setSortConfig: (value: SortConfig) => void;
-  signInWithGoogle: () => Promise<void>;
-  signInWithCredentials: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOutAdmin: () => Promise<void>;
   refreshApplications: () => Promise<void>;
 }
 
-const ADMIN_EMAIL = 'nitinjain@jainbafna.com';
-
 /**
- * Handles admin authentication, data loading and dashboard filtering state.
+ * Handles admin sign-in (checked by eAccountsApp on the server), data loading and dashboard filtering state.
  */
 export function useAdminApplications(): UseAdminApplicationsResult {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [applications, setApplications] = useState<ApplicationRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [positionFilter, setPositionFilter] = useState<'all' | 'article' | 'paid_assistant'>('all');
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>('all');
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all');
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'submittedAt', direction: 'desc' });
 
@@ -52,96 +44,60 @@ export function useAdminApplications(): UseAdminApplicationsResult {
     setLoading(true);
     setError(null);
     try {
-      const recordsQuery = query(collection(db, 'applications'), orderBy('submittedAt', 'desc'));
-      const querySnapshot = await getDocs(recordsQuery);
-
-      const hydrated = await Promise.all(
-        querySnapshot.docs.map(async (document) => {
-          const data = document.data() as Omit<ApplicationRecord, 'id'>;
-          let dynamicResumeUrl: string | null = null;
-
-          if (data.resumeUrl && typeof data.resumeUrl === 'string') {
-            dynamicResumeUrl = data.resumeUrl;
-          } else if (data.resumePath && typeof data.resumePath === 'string') {
-            try {
-              dynamicResumeUrl = await getDownloadURL(ref(storage, data.resumePath));
-            } catch (resumeError) {
-              console.error('Could not fetch resume URL', data.resumePath, resumeError);
-            }
-          }
-
-          return {
-            id: document.id,
-            ...data,
-            dynamicResumeUrl,
-          } satisfies ApplicationRecord;
-        }),
-      );
-
-      setApplications(hydrated);
+      const result = await apiGet<{ applications: ApplicationRecord[] }>('/api/admin/applications');
+      setApplications(result.applications);
     } catch (fetchError) {
-      console.error('Error fetching applications', fetchError);
-      setError('Could not fetch applications. You may not have permission.');
+      if (fetchError instanceof ApiError && fetchError.status === 401) {
+        setUser(null);
+        setError('Your session has ended. Please sign in again.');
+      } else {
+        setError(`Could not load applications. ${errorMessage(fetchError)}`);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser && currentUser.email === ADMIN_EMAIL) {
-        setUser(currentUser);
+    let cancelled = false;
+    apiGet<AdminUser>('/api/auth/me')
+      .then(async (me) => {
+        if (cancelled) return;
+        setUser(me);
         await refreshApplications();
-        return;
-      }
-
-      setUser(null);
-      setLoading(false);
-
-      if (currentUser) {
-        setError('Access denied. Please sign in with the authorized admin account.');
-        await signOut(auth);
-      }
-    });
-
-    return () => unsubscribe();
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [refreshApplications]);
 
-  const signInWithGoogle = useCallback(async () => {
-    setError(null);
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (signInError) {
-      const host = typeof window === 'undefined' ? 'this domain' : window.location.hostname;
-      setError(getFirebaseAuthErrorMessage(signInError, host));
-    }
-  }, []);
-
-  const signInWithCredentials = useCallback(async (email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
-
-    if (!normalizedEmail || !password) {
-      setError('Username/email and password are required.');
-      return;
-    }
-
-    setError(null);
-    try {
-      await signInWithEmailAndPassword(auth, normalizedEmail, password);
-    } catch (signInError) {
-      const host = typeof window === 'undefined' ? 'this domain' : window.location.hostname;
-      setError(getFirebaseAuthErrorMessage(signInError, host));
-    }
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      setError(null);
+      try {
+        const me = await apiSend<AdminUser>('/api/auth/login', 'POST', { email: email.trim().toLowerCase(), password });
+        setUser(me);
+        await refreshApplications();
+      } catch (signInError) {
+        setError(errorMessage(signInError));
+      }
+    },
+    [refreshApplications],
+  );
 
   const signOutAdmin = useCallback(async () => {
-    await signOut(auth);
+    await apiSend('/api/auth/logout', 'POST', {}).catch(() => undefined);
+    setUser(null);
+    setApplications([]);
   }, []);
 
   const { filteredList, counts } = useMemo(() => {
     const queryText = normalizeText(searchTerm);
 
-    const positions: Record<'all' | 'article' | 'paid_assistant', number> = { all: 0, article: 0, paid_assistant: 0 };
+    const positions: Record<PositionFilter, number> = { all: 0, article: 0, paid_assistant: 0, audit_manager: 0 };
     const statuses: Record<ApplicationStatus | 'all', number> = { all: 0, new: 0, called_for_interview: 0, selected: 0, rejected: 0 };
     const searched: ApplicationRecord[] = [];
 
@@ -161,6 +117,7 @@ export function useAdminApplications(): UseAdminApplicationsResult {
         positions.all++;
         if (application.position === 'article') positions.article++;
         if (application.position === 'paid_assistant') positions.paid_assistant++;
+        if (application.position === 'audit_manager') positions.audit_manager++;
       }
 
       if (isCurrentPosition) {
@@ -182,9 +139,7 @@ export function useAdminApplications(): UseAdminApplicationsResult {
 
       const mapValue = (value: unknown): string | number => {
         if (sortConfig.key === 'submittedAt') {
-          return value && typeof (value as { toMillis?: () => number }).toMillis === 'function'
-            ? (value as { toMillis: () => number }).toMillis()
-            : 0;
+          return typeof value === 'string' ? Date.parse(value) || 0 : 0;
         }
         if (typeof value === 'string') return value.toLowerCase();
         return '';
@@ -215,8 +170,7 @@ export function useAdminApplications(): UseAdminApplicationsResult {
     setPositionFilter,
     setStatusFilter,
     setSortConfig,
-    signInWithGoogle,
-    signInWithCredentials,
+    signIn,
     signOutAdmin,
     refreshApplications,
   };

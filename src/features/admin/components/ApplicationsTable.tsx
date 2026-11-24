@@ -1,6 +1,6 @@
 import { ExternalLink } from 'lucide-react';
 import type { ApplicationRecord, ApplicationStatus } from '../../../types/admin';
-import { getPositionLabel, getSubmissionDate } from '../utils/applicationFormatting';
+import { getPositionLabel, getSubmissionDate, resumeUrl } from '../utils/applicationFormatting';
 import { ApplicationRowActions } from './ApplicationRowActions';
 
 interface ApplicationsTableProps {
@@ -49,8 +49,8 @@ export function ApplicationsTable({ applications, pendingApplicationId, onView, 
                   <td className="px-4 py-3 text-sm text-gray-700">{getPositionLabel(application.position)}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{toStatusLabel(application.adminStatus)}</td>
                   <td className="px-4 py-3 text-sm">
-                    {application.dynamicResumeUrl ? (
-                      <a href={application.dynamicResumeUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1">
+                    {resumeUrl(application) ? (
+                      <a href={resumeUrl(application) ?? undefined} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1">
                         View <ExternalLink className="w-3 h-3" />
                       </a>
                     ) : (

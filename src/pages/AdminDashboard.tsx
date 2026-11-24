@@ -29,8 +29,7 @@ export default function AdminDashboard() {
     setSearchTerm,
     setPositionFilter,
     setStatusFilter,
-    signInWithGoogle,
-    signInWithCredentials,
+    signIn,
     signOutAdmin,
     refreshApplications,
   } = useAdminApplications();
@@ -62,11 +61,7 @@ export default function AdminDashboard() {
 
   if (!user) {
     return (
-      <AdminSignInCard
-        error={error}
-        onGoogleSignIn={signInWithGoogle}
-        onCredentialSignIn={signInWithCredentials}
-      />
+      <AdminSignInCard error={error} onSignIn={signIn} />
     );
   }
 
@@ -76,7 +71,7 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Application Management</h1>
+          <h1 className="text-3xl font-bold text-indigo-600">Application Management</h1>
           {error ? <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div> : null}
           {mutationError ? <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-md text-sm">{mutationError}</div> : null}
           {mutationWarning ? <div className="mt-3 p-3 bg-amber-50 text-amber-800 rounded-md text-sm">{mutationWarning}</div> : null}

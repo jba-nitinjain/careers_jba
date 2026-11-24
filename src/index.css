@@ -1,1 +1,28 @@
 @import 'tailwindcss';
+
+/*
+ * Firm brand (matches jainbafna.com): navy #0D2B55, Cormorant Garamond headings, Inter body.
+ * The indigo scale is remapped to navy so every existing indigo-* utility follows the brand.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+
+  --color-indigo-50: #eef3fa;
+  --color-indigo-100: #dbe5f3;
+  --color-indigo-200: #b8cbe6;
+  --color-indigo-300: #8ba9d3;
+  --color-indigo-400: #5a80b9;
+  --color-indigo-500: #1e4a85;
+  --color-indigo-600: #0d2b55;
+  --color-indigo-700: #0a2246;
+  --color-indigo-800: #081b38;
+  --color-indigo-900: #06142a;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  letter-spacing: 0.01em;
+}

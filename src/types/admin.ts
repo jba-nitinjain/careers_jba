@@ -1,5 +1,3 @@
-import type { Timestamp } from 'firebase/firestore';
-
 export type AdminSortKey = 'submittedAt' | 'fullName' | 'position';
 
 export type SortDirection = 'asc' | 'desc';
@@ -7,6 +5,10 @@ export type SortDirection = 'asc' | 'desc';
 export type ApplicationStatus = 'new' | 'rejected' | 'called_for_interview' | 'selected';
 
 export const APPLICATION_STATUSES: ApplicationStatus[] = ['new', 'rejected', 'called_for_interview', 'selected'];
+
+export type PositionKey = 'article' | 'paid_assistant' | 'audit_manager';
+
+export type PositionFilter = 'all' | PositionKey;
 
 export interface SortConfig {
   key: AdminSortKey;
@@ -20,16 +22,19 @@ export interface ApplicationReference {
   email?: string;
 }
 
+export interface AdminUser {
+  email: string;
+}
+
 export interface ApplicationRecord {
   id: string;
   fullName?: string;
   email?: string;
   position?: string;
-  submittedAt?: Timestamp;
+  /** ISO 8601 timestamp. */
+  submittedAt?: string;
   adminStatus?: ApplicationStatus;
-  resumeUrl?: string;
-  resumePath?: string;
-  dynamicResumeUrl?: string | null;
+  hasResume?: boolean;
   references?: ApplicationReference[];
   [key: string]: unknown;
 }

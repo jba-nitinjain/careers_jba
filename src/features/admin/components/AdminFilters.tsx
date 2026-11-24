@@ -1,14 +1,14 @@
-import type { AdminSortKey, ApplicationStatus, SortConfig } from '../../../types/admin';
+import type { AdminSortKey, ApplicationStatus, PositionFilter, SortConfig } from '../../../types/admin';
 import type { ApplicationCounts } from '../hooks/useAdminApplications';
 
 interface AdminFiltersProps {
   searchTerm: string;
-  positionFilter: 'all' | 'article' | 'paid_assistant';
+  positionFilter: PositionFilter;
   statusFilter: ApplicationStatus | 'all';
   sortConfig: SortConfig;
   counts: ApplicationCounts;
   onSearchChange: (value: string) => void;
-  onPositionChange: (value: 'all' | 'article' | 'paid_assistant') => void;
+  onPositionChange: (value: PositionFilter) => void;
   onStatusChange: (value: ApplicationStatus | 'all') => void;
   onSortChange: (key: AdminSortKey) => void;
 }
@@ -28,15 +28,16 @@ export function AdminFilters({
     <div className="mb-6">
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 mb-4">
-        <nav className="-mb-px flex space-x-8" aria-label="Position Tabs">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Position Tabs">
           {[
             { id: 'all', label: 'All Positions', count: counts.positions.all },
-            { id: 'article', label: 'Article Assistant', count: counts.positions.article },
+            { id: 'article', label: 'Article Clerk', count: counts.positions.article },
             { id: 'paid_assistant', label: 'Paid Assistant', count: counts.positions.paid_assistant },
+            { id: 'audit_manager', label: 'Audit Manager', count: counts.positions.audit_manager },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => onPositionChange(tab.id as 'all' | 'article' | 'paid_assistant')}
+              onClick={() => onPositionChange(tab.id as PositionFilter)}
               className={`
                 group flex items-center whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors
                 ${positionFilter === tab.id

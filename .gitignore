@@ -23,14 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Firebase CLI generated files
-.firebaserc
-firestore.indexes.json
-
-# Runtime / temp files
-server_pid.txt
-*.txt
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
+# Local secrets and tool state
+.env
+.env.*
+!.env.example
+.netlify
+.firebase
