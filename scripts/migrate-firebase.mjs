@@ -34,7 +34,7 @@ if (!DB || !process.env.EACCOUNTS_APP_KEY) throw new Error('EACCOUNTS_DB and EAC
 
 async function gateway(method, path, body, idempotencyKey) {
   const text = body === undefined ? '' : JSON.stringify(body);
-  const timestamp = String(Math.floor(Date.now() / 1000));
+  const timestamp = new Date().toISOString(); // gateway expects ISO 8601
   const nonce = randomUUID();
   const headers = { 'X-App-Key': process.env.EACCOUNTS_APP_KEY, 'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Date-Format': 'stored', 'X-On-Behalf-Of': 'firebase-migration' };
   const secret = process.env.EACCOUNTS_HMAC_SECRET;

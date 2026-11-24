@@ -35,7 +35,8 @@ export interface GatewayCallOptions {
 
 export async function gatewayCall<T = unknown>(method: string, path: string, options: GatewayCallOptions = {}): Promise<T> {
   const body = options.body === undefined ? '' : JSON.stringify(options.body);
-  const timestamp = String(Math.floor(Date.now() / 1000));
+  // The gateway expects an ISO 8601 timestamp; the signed PATH includes the query string.
+  const timestamp = new Date().toISOString();
   const nonce = randomUUID();
   const lines = [method, path, body, timestamp, nonce];
   if (options.onBehalfOf) lines.push(options.onBehalfOf);
