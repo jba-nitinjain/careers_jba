@@ -46,11 +46,6 @@ core columns are kept as JSON text in `applications.data`. Times are stored in U
 
 For local work put the same values in `.env.local` (git-ignored) and run `netlify dev`.
 
-## Copying old Firebase data
-
-`node scripts/migrate-firebase.mjs --dry-run`, then without `--dry-run`. Needs
-`gcloud auth application-default login` and a linked Netlify CLI. Re-running skips records already copied.
-
 ## Commands
 
 `npm run dev` (UI only) · `netlify dev` (UI + functions) · `npm run build` · `npm run lint`
