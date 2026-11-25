@@ -5,6 +5,7 @@ import { RESUME_STORE } from '../lib/storage';
 import { errorResponse, json } from '../lib/http';
 import { gatewayCall, gatewayDb, toStoredUtc } from '../lib/eaccounts';
 import { MAX_RESUME_BYTES, detectResumeType, mapApplication, safeFileName } from '../lib/application';
+import { sendApplicationEmails } from '../lib/mail';
 
 const MAX_PER_IP_PER_HOUR = 5;
 
@@ -58,6 +59,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     }
 
     const id = randomUUID();
+    const submittedAt = new Date();
     const resumeName = safeFileName(resume.name);
     const resumeKey = `${id}/${resumeName}`;
     const store = getStore({ name: RESUME_STORE, consistency: 'strong' });
@@ -68,7 +70,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
         idempotencyKey: id,
         body: {
           id,
-          submitted_at: toStoredUtc(new Date()),
+          submitted_at: toStoredUtc(submittedAt),
           position: value.position,
           full_name: value.fullName,
           email: value.email,
@@ -86,6 +88,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
       await store.delete(resumeKey).catch(() => undefined);
       throw saveError;
     }
+
+    // Application is saved; emails are best-effort and never fail the submission.
+    await sendApplicationEmails(value, id, submittedAt);
 
     return json({ ok: true }, 201);
   } catch (error) {
