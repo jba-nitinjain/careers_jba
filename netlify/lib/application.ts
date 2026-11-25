@@ -45,16 +45,15 @@ export function mapApplication(raw: Raw, today = new Date()): { value?: MappedAp
   const dob = str(raw, 'dob');
 
   const required: Array<[string, string]> = [
-    ['full_name', 'Full name'], ['dob', 'Date of birth'], ['address', 'Current address'],
+    ['full_name', 'Full name'], ['dob', 'Date of birth'],
     ['current_location', 'Current area/locality'], ['willing_to_travel', 'Willingness to travel'],
-    ['other_qualifications', 'Additional qualifications'], ['excel_skill', 'Excel skill'],
-    ['word_skill', 'Word skill'], ['powerpoint_skill', 'PowerPoint skill'],
-    ['strengths_weaknesses', 'Strengths & weaknesses'], ['contribution', 'Contribution'], ['how_heard', 'How you heard about us'],
+    ['excel_skill', 'Excel skill'], ['word_skill', 'Word skill'], ['powerpoint_skill', 'PowerPoint skill'],
+    ['how_heard', 'How you heard about us'],
   ];
   if (position === 'article') {
-    required.push(['ca_status', 'CA Intermediate status'], ['ca_attempts', 'Attempts'], ['itt_oc_status', 'ITT/OC status'],
+    required.push(['ca_status', 'CA Intermediate status'], ['ca_attempts', 'Attempts'], ['itt_oc_status', 'ICITSS (ITT & OC) status'],
       ['degree_status', 'Degree status'], ['availability_to_join', 'Availability to join'],
-      ['expected_stipend', 'Expected stipend'], ['prior_experience', 'Prior experience']);
+      ['prior_experience', 'Prior experience']);
   } else if (position) {
     required.push(['highest_qualification', 'Highest qualification'], ['current_employer', 'Current employer'],
       ['years_experience', 'Years of experience'], ['notice_period', 'Notice period'],

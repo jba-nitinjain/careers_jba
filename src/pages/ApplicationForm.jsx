@@ -227,7 +227,7 @@ const ApplicationForm = () => {
     await performSubmission();
   };
 
-  const platformsList = ["Tally", "QuickBooks", "Zoho Books", "SAP", "Busy", "Other"];
+  const platformsList = ["Tally", "QuickBooks", "Zoho Books", "SAP", "Busy", "Other", "None yet"];
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
@@ -242,13 +242,58 @@ const ApplicationForm = () => {
               <span className="block text-xs uppercase tracking-widest text-gray-500">Chartered Accountants · Est. 1982</span>
             </span>
           </a>
-          <h1 className="text-4xl font-bold text-indigo-600 sm:text-5xl">
-            Join Our Professional Team
+          <h1 className="text-4xl font-bold text-indigo-600 sm:text-5xl text-balance">
+            Build Your CA Career With Us
           </h1>
-          <p className="mt-4 text-lg text-gray-500">
-            Openings at our Chennai Head Office for Audit Managers, Paid Assistants and Article Clerks. Please fill out the form below to apply.
+          <p className="mt-4 text-lg text-gray-600">
+            A Chennai firm of Chartered Accountants since 1982, led by six partners. We are hiring Article Clerks, Paid Assistants and Audit Managers at our Chennai Head Office.
           </p>
         </div>
+
+        {/* Why join */}
+        <section aria-labelledby="why-join" className="mb-10 space-y-6">
+          <div className="bg-white px-6 py-8 shadow sm:rounded-lg">
+            <h2 id="why-join" className="text-2xl font-bold text-indigo-600 mb-5">Why join Jain Bafna &amp; Associates</h2>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <dt className="text-sm font-semibold text-gray-900">Over 40 years in practice</dt>
+                <dd className="mt-1 text-sm text-gray-600">Established in 1982, with a steady client base built over four decades.</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-semibold text-gray-900">Learn directly from six partners</dt>
+                <dd className="mt-1 text-sm text-gray-600">Work alongside experienced partners and get guidance on real client work from day one.</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-semibold text-gray-900">Broad practical exposure</dt>
+                <dd className="mt-1 text-sm text-gray-600">Statutory audit, tax audit, income tax, GST and accounting work, all under one roof.</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-semibold text-gray-900">Clear working hours</dt>
+                <dd className="mt-1 text-sm text-gray-600">09:30 AM to 06:00 PM, Monday to Saturday, at our Chennai Head Office.</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white px-5 py-6 shadow sm:rounded-lg">
+              <h3 className="font-serif text-xl font-bold text-indigo-600">Article Clerk</h3>
+              <p className="mt-2 text-sm text-gray-600">Two-year articleship for CA Intermediate students who have completed their exams.</p>
+              <p className="mt-2 text-sm text-gray-600">Stipend as per industry standards, with an increase in the second year.</p>
+            </div>
+            <div className="bg-white px-5 py-6 shadow sm:rounded-lg">
+              <h3 className="font-serif text-xl font-bold text-indigo-600">Paid Assistant</h3>
+              <p className="mt-2 text-sm text-gray-600">For candidates with accounting, audit or tax experience who want to grow in a practising firm.</p>
+              <p className="mt-2 text-sm text-gray-600">Salary based on experience.</p>
+            </div>
+            <div className="bg-white px-5 py-6 shadow sm:rounded-lg">
+              <h3 className="font-serif text-xl font-bold text-indigo-600">Audit Manager</h3>
+              <p className="mt-2 text-sm text-gray-600">For qualified or semi-qualified professionals ready to lead audit teams and handle client engagements.</p>
+              <p className="mt-2 text-sm text-gray-600">Salary based on experience.</p>
+            </div>
+          </div>
+
+          <p className="text-center text-sm text-gray-500">Applying takes about 5 minutes. Keep your resume (PDF or Word, under 4 MB) ready.</p>
+        </section>
 
         {submitStatus.message && (
           <div className={`mb-6 p-4 rounded-md flex items-start ${submitStatus.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
@@ -293,36 +338,14 @@ const ApplicationForm = () => {
                 error={mobileError}
               />
 
-              <div className="sm:col-span-2">
-                <TextAreaField label="Current Address" id="address" required rows={2} value={formData.address} onChange={handleChange} />
-              </div>
-
               <InputField label="Current Area/Locality in Chennai (e.g., T. Nagar, Adyar)" id="current_location" required value={formData.current_location} onChange={handleChange} />
               <InputField label="LinkedIn Profile URL" id="linkedin_url" type="url" value={formData.linkedin_url} onChange={handleChange} />
 
               <div className="sm:col-span-2">
-                <label className="flex items-center text-sm font-medium text-gray-700">
-                  <input
-                    type="checkbox"
-                    name="same_address"
-                    checked={formData.same_address}
-                    onChange={handleChange}
-                    className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mr-2"
-                  />
-                  Hometown address is the same as current address
-                </label>
-              </div>
-
-              <div className="sm:col-span-2">
-                <TextAreaField
-                  label="Hometown Address"
-                  id="hometown_address"
-                  required={!formData.same_address}
-                  rows={2}
-                  value={formData.hometown_address}
-                  onChange={handleChange}
-                  disabled={formData.same_address}
-                />
+                <label htmlFor="resume" className="block text-sm font-medium text-gray-700 mb-1">Upload Resume <span className="text-red-500">*</span></label>
+                <input type="file" id="resume" accept=".pdf,.doc,.docx" required onChange={handleFileChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-300 rounded-md shadow-sm" />
+                <p className="mt-1 text-xs text-gray-500">PDF or Word, under 4 MB.</p>
+                {fileError && <p className="mt-2 text-sm text-red-600">{fileError}</p>}
               </div>
 
               <div className="sm:col-span-2">
@@ -361,7 +384,7 @@ const ApplicationForm = () => {
               {formData.position === 'article' && (
                 <>
                   <SelectField
-                    label="CA IPCC / Inter Status"
+                    label="CA Intermediate Status"
                     id="ca_status"
                     required
                     value={formData.ca_status}
@@ -374,7 +397,7 @@ const ApplicationForm = () => {
                     ]}
                   />
                   <SelectField
-                    label="Number of Attempts in CA Inter"
+                    label="Number of Attempts in CA Intermediate"
                     id="ca_attempts"
                     required
                     value={formData.ca_attempts}
@@ -387,7 +410,7 @@ const ApplicationForm = () => {
                     ]}
                   />
                   <SelectField
-                    label="ITT & Orientation Course (OC) Status"
+                    label="ICITSS (ITT & OC) Status"
                     id="itt_oc_status"
                     required
                     value={formData.itt_oc_status}
@@ -436,6 +459,9 @@ const ApplicationForm = () => {
                   options={[
                     { value: 'CA Qualified', label: 'CA Qualified' },
                     { value: 'CA Semi-Qualified / Finalist', label: 'CA Semi-Qualified / Finalist' },
+                    { value: 'CA Intermediate', label: 'CA Intermediate' },
+                    { value: 'CMA', label: 'CMA' },
+                    { value: 'CS', label: 'CS' },
                     { value: 'MBA', label: 'MBA' },
                     { value: 'M.Com', label: 'M.Com' },
                     { value: 'B.Com', label: 'B.Com' }
@@ -444,7 +470,7 @@ const ApplicationForm = () => {
               )}
 
               <div className="sm:col-span-2">
-                <TextAreaField label="Additional Qualifications / Certifications" id="other_qualifications" required rows={2} value={formData.other_qualifications} onChange={handleChange} />
+                <TextAreaField label="Additional Qualifications / Certifications (optional)" id="other_qualifications" rows={2} value={formData.other_qualifications} onChange={handleChange} />
               </div>
             </div>
           </div>
@@ -457,7 +483,7 @@ const ApplicationForm = () => {
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-3">Core Domain Expertise <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {['Statutory Audit', 'Internal Audit', 'Direct Tax', 'GST', 'ROC/Secretarial', 'Accounting'].map(domain => (
+                    {['Statutory Audit', 'Tax Audit', 'Internal Audit', 'Bank Audit', 'Direct Tax', 'GST', 'TDS / Payroll', 'Transfer Pricing', 'ROC/Secretarial', 'Accounting'].map(domain => (
                       <label key={domain} className="inline-flex items-center">
                         <input type="checkbox" name="domain_expertise" value={domain} checked={formData.domain_expertise.includes(domain)} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
                         <span className="ml-2 text-sm text-gray-700">{domain}</span>
@@ -496,7 +522,6 @@ const ApplicationForm = () => {
             <div className="bg-white px-6 py-8 shadow sm:rounded-lg transition-all duration-300">
               <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-6">3. Articleship Details</h2>
               <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                <InputField label="Expected Stipend (Per Month)" id="expected_stipend" required value={formData.expected_stipend} onChange={handleChange} />
                 <div className="sm:col-span-2">
                   <TextAreaField label="Any prior internship experience? (If none, write 'N/A')" id="prior_experience" required rows={3} value={formData.prior_experience} onChange={handleChange} />
                 </div>
@@ -548,18 +573,23 @@ const ApplicationForm = () => {
             </div>
 
             <div className="space-y-6">
-              <TextAreaField label="Strengths & Weaknesses" id="strengths_weaknesses" required rows={4} value={formData.strengths_weaknesses} onChange={handleChange} />
-              <TextAreaField label="How will you contribute to the organisation?" id="contribution" required rows={4} value={formData.contribution} onChange={handleChange} />
+              <TextAreaField label="Strengths & Weaknesses (optional)" id="strengths_weaknesses" rows={4} value={formData.strengths_weaknesses} onChange={handleChange} />
+              <TextAreaField label="How will you contribute to the organisation? (optional)" id="contribution" rows={4} value={formData.contribution} onChange={handleChange} />
 
               <div>
                 <SelectField
                   label="Where did you get to know about us from?"
                   id="how_heard"
+                  required
                   value={formData.how_heard}
                   onChange={handleChange}
                   options={[
                     { value: 'LinkedIn', label: 'LinkedIn' },
                     { value: 'Firm Website', label: 'Firm Website' },
+                    { value: 'ICAI / BOS Portal', label: 'ICAI / BOS Portal' },
+                    { value: 'Naukri / Indeed', label: 'Naukri / Indeed' },
+                    { value: 'College / Coaching Institute', label: 'College / Coaching Institute' },
+                    { value: 'Current Employee', label: 'Current Employee' },
                     { value: 'Social Media', label: 'Social Media' },
                     { value: 'Friends', label: 'Friends' },
                     { value: 'Family', label: 'Family' },
@@ -571,12 +601,6 @@ const ApplicationForm = () => {
                     <InputField label="Please specify:" id="how_heard_other" required value={formData.how_heard_other} onChange={handleChange} />
                   </div>
                 )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Resume <span className="text-red-500">*</span></label>
-                <input type="file" id="resume" accept=".pdf,.doc,.docx" required onChange={handleFileChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-300 rounded-md shadow-sm" />
-                {fileError && <p className="mt-2 text-sm text-red-600">{fileError}</p>}
               </div>
             </div>
           </div>
@@ -616,6 +640,10 @@ const ApplicationForm = () => {
             </details>
           </div>
 
+          <p className="text-xs text-gray-500">
+            By submitting, you agree that Jain Bafna &amp; Associates may store and use the details and resume you provide only to consider you for roles at the firm. To ask for your data to be deleted, email nitinjain@jainbafna.com.
+          </p>
+
           <div className="flex justify-end pt-4">
             <button
               type="submit"
@@ -642,8 +670,11 @@ const ApplicationForm = () => {
               <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Application Submitted!</h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-3">
               Thank you for applying to Jain Bafna & Associates. We have received your application successfully and will get back to you shortly.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              A confirmation has been sent to your email. If you don't see it, please check your Spam folder.
             </p>
             <button
               onClick={() => setShowSuccessPopup(false)}
