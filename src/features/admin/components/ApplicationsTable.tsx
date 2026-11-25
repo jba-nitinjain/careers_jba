@@ -23,7 +23,43 @@ export function ApplicationsTable({ applications, pendingApplicationId, onView, 
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <>
+    {/* Phones: one card per application, all actions visible */}
+    <ul className="md:hidden space-y-3">
+      {applications.map((application) => {
+        const isPending = pendingApplicationId === application.id;
+        const url = resumeUrl(application);
+        return (
+          <li key={application.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900">{application.fullName ?? 'Unknown'}</p>
+                <p className="text-sm text-gray-500 break-all">{application.email ?? 'N/A'}</p>
+              </div>
+              <span className="shrink-0 text-xs text-gray-500">{getSubmissionDate(application)}</span>
+            </div>
+            <p className="text-sm text-gray-700">
+              {getPositionLabel(application.position)} · {toStatusLabel(application.adminStatus)}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => onView(application)} className="text-sm bg-indigo-50 text-indigo-700 px-3 py-2.5 rounded-md hover:bg-indigo-100">
+                View details
+              </button>
+              {url ? (
+                <a href={url} target="_blank" rel="noreferrer" className="text-sm text-center border border-indigo-200 text-indigo-700 px-3 py-2.5 rounded-md inline-flex items-center justify-center gap-1">
+                  Resume <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="text-sm text-center text-gray-400 px-3 py-2.5">No resume</span>
+              )}
+            </div>
+            <ApplicationRowActions application={application} pending={isPending} onStatusChange={onStatusChange} onDelete={onDelete} />
+          </li>
+        );
+      })}
+    </ul>
+
+    <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -77,5 +113,6 @@ export function ApplicationsTable({ applications, pendingApplicationId, onView, 
         </table>
       </div>
     </div>
+    </>
   );
 }

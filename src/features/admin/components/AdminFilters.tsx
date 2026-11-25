@@ -96,7 +96,8 @@ export function AdminFilters({
           value={searchTerm}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search by name, email, position"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          aria-label="Search applications"
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-base md:text-sm"
         />
         <div className="flex justify-end">
           <button

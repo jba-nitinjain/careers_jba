@@ -19,7 +19,7 @@ function toList(value: unknown): string {
 
 function Field({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
   return (
-    <p className={wide ? 'md:col-span-2' : undefined}>
+    <p className={`min-w-0 [overflow-wrap:anywhere] ${wide ? 'md:col-span-2' : ''}`}>
       <span className="text-gray-500">{label}:</span> <span className="whitespace-pre-line">{children}</span>
     </p>
   );
