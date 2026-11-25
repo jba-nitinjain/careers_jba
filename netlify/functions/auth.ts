@@ -43,6 +43,64 @@ async function login(req: Request): Promise<Response> {
   return json({ email }, 200, { 'set-cookie': cookie });
 }
 
+const GATEWAY_URL = (process.env.EACCOUNTS_BASE_URL ?? 'https://api.eaccountsapp.com').replace(/\/$/, '');
+const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Changes the signed-in staff member's own eAccountsApp password.
+ * The current password is re-checked by logging in to the gateway, and the
+ * gateway's own-password route checks it again before saving the new one.
+ */
+async function changePassword(req: Request): Promise<Response> {
+  const session = await getSession(req);
+  if (!session) return errorResponse('Your session has ended. Please sign in again.', 401);
+
+  const body = (await req.json().catch(() => ({}))) as { currentPassword?: string; newPassword?: string };
+  const currentPassword = String(body.currentPassword ?? '');
+  const newPassword = String(body.newPassword ?? '');
+  if (!currentPassword || !newPassword) return errorResponse('Enter your current password and a new password.', 400);
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return errorResponse(`The new password must be at least ${MIN_PASSWORD_LENGTH} characters.`, 422);
+  }
+  if (newPassword === currentPassword) return errorResponse('The new password must be different from the current one.', 422);
+
+  let token: string;
+  try {
+    const result = await gatewayCall<LoginResponse>('POST', '/v1/auth/login', {
+      body: { db: gatewayDb(), username: session.email, password: currentPassword },
+    });
+    token = result.data.token;
+  } catch (error) {
+    if (error instanceof GatewayError) {
+      if (error.status === 401 || error.status === 422) return errorResponse('Your current password is incorrect.', 400);
+      if (error.status === 429) return errorResponse('Too many attempts. Please wait a few minutes and try again.', 429);
+    }
+    throw error;
+  }
+
+  const headers = { Authorization: `Bearer ${token}`, 'X-App-Key': process.env.EACCOUNTS_APP_KEY ?? '' };
+  try {
+    const response = await fetch(`${GATEWAY_URL}/admin/me/password`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (response.status === 401) return errorResponse('Your current password is incorrect.', 400);
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      console.error('change-password rejected by gateway', response.status, detail.slice(0, 300));
+      if (response.status === 400 || response.status === 422) {
+        return errorResponse('That password was not accepted. Please choose a different one.', 422);
+      }
+      throw new Error(`Gateway returned ${response.status}`);
+    }
+  } finally {
+    await fetch(`${GATEWAY_URL}/v1/auth/logout`, { method: 'POST', headers }).catch(() => undefined);
+  }
+
+  return json({ ok: true });
+}
+
 export default async (req: Request, context: Context): Promise<Response> => {
   try {
     const action = context.params.action;
@@ -55,6 +113,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     if (req.method !== 'POST' || !isJsonRequest(req)) return errorResponse('Not found', 404);
     if (action === 'login') return await login(req);
     if (action === 'logout') return json({ ok: true }, 200, { 'set-cookie': clearSessionCookie() });
+    if (action === 'change-password') return await changePassword(req);
     return errorResponse('Not found', 404);
   } catch (error) {
     console.error('auth failed', error);
